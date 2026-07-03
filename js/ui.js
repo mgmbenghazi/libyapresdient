@@ -101,6 +101,13 @@ function renderCommandBar() {
   const gaugeLabelEl = document.getElementById('cmd-gauge-label');
   gaugeLabelEl.textContent = `مؤشر الحوكمة — ${verdict.label}`;
   gaugeLabelEl.className = `gauge-label ${verdict.status}`;
+
+  const risk = computeSystemicRisk(s);
+  const riskStatus = risk >= 65 ? 'bad' : risk >= 35 ? 'medium' : 'good';
+  const riskLabel = risk >= 65 ? 'مرتفعة' : risk >= 35 ? 'متوسطة' : 'منخفضة';
+  const riskBadgeEl = document.getElementById('cmd-risk-badge');
+  riskBadgeEl.textContent = `⚠ مخاطرة نظامية ${Math.round(risk)}% — ${riskLabel}`;
+  riskBadgeEl.className = `risk-badge ${riskStatus}`;
 }
 
 // ------- شريط "يتطلب انتباهك الآن" -------
@@ -434,13 +441,16 @@ function bindBudgetPresets() {
   if (expansion) expansion.onclick = () => applyBudgetPreset(115);
 }
 
+const WORLD_CYCLE_LABELS = { boom: '📈 رواج اقتصادي عالمي', normal: '🌐 استقرار عالمي نسبي', recession: '📉 ركود اقتصادي عالمي' };
+
 function renderBudgetSummary() {
   const s = Game.state;
   const budget = estimateBudget(s);
   const wrap = document.getElementById('budget-summary');
+  const cycleLabel = WORLD_CYCLE_LABELS[s.economy.worldCycle] || WORLD_CYCLE_LABELS.normal;
   wrap.innerHTML = `
     <div>الخزينة العامة: <b>${fmtNum(s.indicators.treasury, 0)}</b> مليون د.ل</div>
-    <div>سعر النفط الحالي: <b>${fmtNum(s.economy.oilPrice, 0)}</b> (مؤشر نسبي)</div>
+    <div>سعر النفط الحالي: <b>${fmtNum(s.economy.oilPrice, 0)}</b> (مؤشر نسبي) - <span title="يتحيّز مشي سعر النفط العشوائي حسب هذه الدورة">${cycleLabel}</span></div>
     <div>إيرادات النفط المتوقعة: <b>${fmtNum(budget.oilRevenue, 0)}</b> مليون د.ل</div>
     <div>الإيرادات الضريبية المتوقعة: <b>${fmtNum(budget.taxRevenue, 0)}</b> مليون د.ل</div>`;
   renderBudgetLiveSummary(budget);
@@ -1230,6 +1240,11 @@ function renderReportModal(summary, onClose) {
       <div class="r-item"><span>الأمن</span>${deltaSpan('security')}</div>
       <div class="r-item"><span>الدين العام</span>${deltaSpan('publicDebt')}</div>
     </div>
+    ${summary.attributions && summary.attributions.length ? `
+    <div class="causal-attribution">
+      <div class="ca-title">لماذا تغيّرت الأرقام هذا الشهر؟</div>
+      <ul class="ca-list">${summary.attributions.map(a => `<li>${a}</li>`).join('')}</ul>
+    </div>` : ''}
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
   const dismiss = () => { hideModal(); onClose(); };
   showModal(html, { onDismiss: dismiss });

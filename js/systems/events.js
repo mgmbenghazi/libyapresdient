@@ -2,11 +2,19 @@
 const DEFAULT_EVENT_COOLDOWN = 6; // أشهر - يمنع تكرار نفس الحدث بعد وقوعه مباشرة
 
 function rollEvent(state) {
+  // سلاسل الأزمات المستحقة هذا الشهر (kind: 'event') تتجاوز التبريد والشروط المعتادة وتتصدّر الترجيح بقوة
+  const dueFollowUpIds = (state.pendingFollowUps || [])
+    .filter(f => f.kind === 'event' && state.month >= f.dueMonth)
+    .map(f => f.id);
+
   const candidates = [];
   EVENTS.forEach(e => {
-    if (e.minMonth && state.month < e.minMonth) return;
-    if (state.eventCooldowns[e.id] && state.month < state.eventCooldowns[e.id]) return;
-    if (e.condition && !e.condition(state)) return;
+    const isDueFollowUp = dueFollowUpIds.includes(e.id);
+    if (!isDueFollowUp) {
+      if (e.minMonth && state.month < e.minMonth) return;
+      if (state.eventCooldowns[e.id] && state.month < state.eventCooldowns[e.id]) return;
+      if (e.condition && !e.condition(state)) return;
+    }
 
     if (e.dynamicTarget) {
       const target = resolveDynamicTarget(state, e.dynamicTarget);
@@ -15,21 +23,35 @@ function rollEvent(state) {
         ...e,
         title: interpolateTarget(e.title, target),
         description: interpolateTarget(e.description, target),
-        _target: target
+        _target: target,
+        _isFollowUp: isDueFollowUp
       });
     } else {
-      candidates.push(e);
+      candidates.push({ ...e, _isFollowUp: isDueFollowUp });
     }
   });
   if (candidates.length === 0) return null;
 
-  // احتمال حدوث حدث هذا الشهر ~45%
-  if (Math.random() > 0.45) return null;
+  // حدث مجدول ضمن سلسلة أزمة مستحق هذا الشهر يقع حتماً - لا يخضع لاحتمال الحدوث العام ولا للترجيح العشوائي
+  const dueFollowUp = candidates.find(e => e._isFollowUp);
+  if (dueFollowUp) {
+    state.pendingFollowUps = state.pendingFollowUps.filter(f => !(f.kind === 'event' && f.id === dueFollowUp.id && state.month >= f.dueMonth));
+    return dueFollowUp;
+  }
 
-  const totalWeight = candidates.reduce((a, e) => a + (e.weight || 1), 0);
+  // احتمال حدوث حدث ديناميكي بدل 45% ثابتة: يتحرك من 30% في دولة مستقرة تماماً حتى 75% في دولة متداعية -
+  // جودة الحكم تصبح محسوسة آلياً في هدوء الأشهر أو تلاحقها، لا رقماً واحداً يتجاهل حال البلاد
+  const risk = computeSystemicRisk(state);
+  const eventChance = 0.30 + (risk / 100) * 0.45;
+  if (Math.random() > eventChance) return null;
+
+  // فئة "أزمة" تكتسب وزناً إضافياً يتناسب مع المخاطرة - المشاكل الكبرى ترجّح أكثر في الدول الهشة فعلياً
+  const riskWeightBonus = 1 + (risk / 100) * 1.5;
+  function effectiveWeight(e) { return (e.weight || 1) * (e.severity === 'crisis' ? riskWeightBonus : 1); }
+  const totalWeight = candidates.reduce((a, e) => a + effectiveWeight(e), 0);
   let roll = Math.random() * totalWeight;
   for (const e of candidates) {
-    roll -= (e.weight || 1);
+    roll -= effectiveWeight(e);
     if (roll <= 0) return e;
   }
   return candidates[candidates.length - 1];
@@ -59,6 +81,11 @@ function applyEventOption(state, event, optionIndex) {
       const loser = a.stats.loyalty <= b.stats.loyalty ? a : b;
       if (loser.ministry) dismissFromMinistry(state, loser.ministry);
     }
+  }
+
+  // بعض الخيارات تفتح فصلاً تالياً في سلسلة أزمة بدل حلّها نهائياً - القرار اليوم يُرتّب لاحقة محتومة لاحقاً
+  if (option.followUp) {
+    scheduleFollowUp(state, option.followUp);
   }
 
   state.eventCooldowns[event.id] = state.month + (event.cooldown || DEFAULT_EVENT_COOLDOWN);

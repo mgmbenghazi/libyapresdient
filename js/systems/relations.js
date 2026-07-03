@@ -173,6 +173,11 @@ function resolveDynamicTarget(state, kind) {
       return worstCabinetRivalry(state, -50);
     case 'criticalCabinetRivalry':
       return worstCabinetRivalry(state, -75);
+    case 'weakestRegionSecurity': {
+      const scored = REGIONS.map(r => ({ region: r, value: regionLayerValue(state, r.id, 'security') }));
+      const worst = scored.reduce((min, s) => (s.value < min.value ? s : min));
+      return { type: 'region', id: worst.region.id, name: worst.region.name, value: worst.value };
+    }
     default:
       return null;
   }

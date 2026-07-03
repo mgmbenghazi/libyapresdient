@@ -10,7 +10,9 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 6: + سياسات القطاعات الإنتاجية (sectorPolicies) وأسطر استثمارها في الميزانية (oilSector/agricultureSector/tourismSector/industrySector)
 // 7: + مهلة تبريد إجراء "التواصل" المباشر مع كيانات العلاقات (relationsCooldowns)
 // 8: + سياسة الاقتصاد الكلي الدائمة (macroPolicy): معدلات الضرائب الثلاثة، دعم المحروقات، استراتيجية الدين
-const CURRENT_SAVE_VERSION = 8;
+// 9: + سلاسل الأزمات المجدولة (pendingFollowUps) وعدّادات المخاطرة النظامية (austerityStreak, securityNeglectStreak)
+//    + الدورة الاقتصادية العالمية (economy.worldCycle, economy.worldCycleMonthsLeft) فوق مشي سعر النفط العشوائي
+const CURRENT_SAVE_VERSION = 9;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -35,7 +37,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
         oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
       }
     },
-    economy: { oilPrice: 100 },
+    economy: { oilPrice: 100, worldCycle: 'normal', worldCycleMonthsLeft: 4 + Math.floor(Math.random() * 7) },
     sectorPolicies: {
       oil: { ownership: 'state', orientation: 75 },
       agriculture: { ownership: 'privatized', orientation: 30 },
@@ -59,6 +61,8 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     decisionCooldowns: {}, // id -> month usable again
     eventCooldowns: {}, // id -> month usable again
     relationsCooldowns: {}, // "kind:id" -> month usable again لإجراء "تواصل" المباشر
+    pendingFollowUps: [], // {id, kind:'decision'|'event', dueMonth} - سلاسل أزمات مجدولة من قرارات/أحداث سابقة
+    engineStreaks: { austerity: 0, securityNeglect: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
     decisionsUsed: [], // oneTime ids used
     decisionsLog: [],
     eventsLog: [],
@@ -149,6 +153,17 @@ const SAVE_MIGRATIONS = {
     if (s.macroPolicy._prevFuelSubsidy === undefined) s.macroPolicy._prevFuelSubsidy = s.macroPolicy.fuelSubsidyLevel;
     s.version = 8;
     return s;
+  },
+  8: function migrateV8toV9(s) {
+    if (!Array.isArray(s.pendingFollowUps)) s.pendingFollowUps = [];
+    if (!s.engineStreaks || typeof s.engineStreaks !== 'object') {
+      s.engineStreaks = { austerity: 0, securityNeglect: 0 };
+    }
+    if (!s.economy) s.economy = { oilPrice: 100 };
+    if (!s.economy.worldCycle) s.economy.worldCycle = 'normal';
+    if (s.economy.worldCycleMonthsLeft === undefined) s.economy.worldCycleMonthsLeft = 4 + Math.floor(Math.random() * 7);
+    s.version = 9;
+    return s;
   }
 };
 
@@ -174,7 +189,8 @@ function validateStateShape(s) {
     ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'], ['macroPolicy', 'fuelSubsidyLevel'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
-    ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
+    ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],
+    ['pendingFollowUps'], ['engineStreaks', 'austerity'], ['economy', 'worldCycle']
   ];
   for (const path of requiredPaths) {
     let cur = s;

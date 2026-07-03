@@ -276,8 +276,9 @@ const EVENTS = [
     options: [
       { label: 'التدخل شخصياً للمصالحة بين الطرفين', advisor: 'رئيس الوزراء: خطوة تستهلك وقتك لكنها تحفظ تماسك الحكومة.',
         immediate: { politicalStability: -1 }, characterRelationsEffect: { delta: 20 } },
-      { label: 'إسكات الخبر إعلامياً دون معالجة الجذر', advisor: 'المستشار السياسي: حل سريع لكن الخصومة تبقى تحت الرماد.',
-        immediate: { satisfaction: -2 }, characterRelationsEffect: { delta: -5 } },
+      { label: 'إسكات الخبر إعلامياً دون معالجة الجذر', advisor: 'المستشار السياسي: حل سريع لكن الخصومة تبقى تحت الرماد وقد تنفجر لاحقاً.',
+        immediate: { satisfaction: -2 }, characterRelationsEffect: { delta: -5 },
+        followUp: { id: 'cabinet_resignation_threat', kind: 'event', monthsFromNow: 4 } },
       { label: 'استغلال الانقسام لتقوية موقفك بينهما', advisor: 'المستشار السياسي: يمنحك نفوذاً أكبر لكنه يؤجج الخصومة أكثر.',
         immediate: { politicalStability: 2, satisfaction: -3 }, characterRelationsEffect: { delta: -15 } }
     ]
@@ -294,6 +295,43 @@ const EVENTS = [
         immediate: { politicalStability: 1, satisfaction: -1 }, dismissLowerLoyaltyOfPair: true },
       { label: 'تجاهل التهديد واختبار جديته', advisor: 'المستشار السياسي: مقامرة قد تكلفك وزيراً فجأة دون تحضير بديل.',
         immediate: { politicalStability: -4 }, characterRelationsEffect: { delta: -10 } }
+    ]
+  },
+
+  // ------- أحداث سلاسل الأزمات: نتاج تراكم ضغط مستمر (تقشف متكرر / إهمال أمني) لا حظ عشوائي بحت -------
+  {
+    id: 'austerity_protests', severity: 'crisis', category: 'political', title: 'احتجاجات شعبية ضد سياسة التقشف',
+    description: 'بعد أشهر متتالية من عجز الموازنة المموَّل بالتقشف، خرجت حشود في عدة مدن تندد بتآكل الخدمات العامة وتطالب بتغيير جذري في السياسة الاقتصادية.',
+    weight: 4, cooldown: 10,
+    options: [
+      { label: 'التراجع عن التقشف وفتح باب الحوار الاجتماعي', immediate: { satisfaction: 3, politicalStability: -1, budgetBalance: -2 } },
+      { label: 'فرض الأمن لضبط الاحتجاجات دون تغيير السياسة', immediate: { security: 1, satisfaction: -4, politicalStability: -2 } },
+      { label: 'المضي في التقشف مع حملة إعلامية لتبريره', immediate: { satisfaction: -2, politicalStability: -1 } }
+    ]
+  },
+  {
+    id: 'regional_security_crisis', severity: 'crisis', category: 'security', title: 'تدهور أمني حاد في إقليم {target}',
+    description: 'أدى الإهمال الأمني المتواصل في إقليم {target} إلى انهيار شبه كامل لسلطة الدولة هناك، مع تمدد جماعات مسلحة محلية وانقطاع طرق حيوية.',
+    dynamicTarget: 'weakestRegionSecurity',
+    weight: 4, cooldown: 10,
+    options: [
+      { label: 'حملة عسكرية واسعة لاستعادة السيطرة', immediate: { security: 4, budgetBalance: -3, satisfaction: -1 } },
+      { label: 'مفاوضات مع الفصائل المحلية مقابل تنازلات إدارية', immediate: { security: 1, politicalStability: -2 }, relationsEffect: { type: 'tribe', delta: 10 } },
+      { label: 'الاكتفاء بتعزيزات رمزية دون معالجة الجذر', immediate: { security: -2, satisfaction: -3 } }
+    ]
+  },
+  {
+    id: 'coup_attempt', severity: 'crisis', category: 'political', title: 'محاولة انقلاب عسكري',
+    description: 'في ظل تصاعد المخاطرة النظامية على عدة جبهات معاً، تحركت وحدة عسكرية لمحاولة الاستيلاء على مقار سيادية، في أخطر اختبار يواجه حكمك حتى الآن.',
+    condition: s => computeSystemicRisk(s) > 55,
+    weight: 2, minMonth: 8, cooldown: 16,
+    options: [
+      { label: 'حشد القوات الموالية وقمع المحاولة فوراً', advisor: 'رئيس الوزراء: نجاح شبه مؤكد لكنه يعمّق الانقسام داخل المؤسسة العسكرية.',
+        immediate: { security: -2, politicalStability: 4, satisfaction: -2 } },
+      { label: 'التفاوض مع قادة المحاولة لاحتواء الموقف سلمياً', advisor: 'المستشار السياسي: يجنّب إراقة الدماء لكنه يُظهرك ضعيفاً أمام الخصوم.',
+        immediate: { politicalStability: -3, satisfaction: 2 } },
+      { label: 'مناشدة الشعب والنزول إلى الشارع لحشد الدعم', advisor: 'المستشار السياسي: مقامرة كبرى - إما تحصينك تماماً أو تسريع سقوطك.',
+        immediate: { satisfaction: 5, politicalStability: -1, security: -3 } }
     ]
   }
 ];

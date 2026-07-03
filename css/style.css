@@ -231,6 +231,10 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 .gauge-label.good { color: var(--good); }
 .gauge-label.medium { color: var(--medium); }
 .gauge-label.bad { color: var(--bad); }
+.risk-badge { font-size: .68rem; font-weight: 600; margin-top: 5px; padding: 2px 10px; border-radius: 20px; display: inline-block; cursor: help; }
+.risk-badge.good { background: var(--good-glow); color: var(--good); }
+.risk-badge.medium { background: var(--medium-glow); color: var(--medium); }
+.risk-badge.bad { background: var(--bad-glow); color: var(--bad); }
 
 .status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .icon-row { display: flex; gap: 8px; }
@@ -531,6 +535,11 @@ canvas.spark { display: block; }
 .report-grid .r-item { background: var(--panel-2); border-radius: 8px; padding: 8px 12px; font-size: .85rem; display: flex; justify-content: space-between; }
 .delta-pos { color: var(--good); }
 .delta-neg { color: var(--bad); }
+
+.causal-attribution { background: var(--panel-2); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; border-inline-start: 3px solid var(--gold); }
+.causal-attribution .ca-title { font-size: .8rem; font-weight: 700; color: var(--gold); margin-bottom: 6px; }
+.causal-attribution .ca-list { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; }
+.causal-attribution .ca-list li { font-size: .8rem; color: var(--text-dim); }
 
 /* ------- شاشة النهاية ------- */
 .achievements-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

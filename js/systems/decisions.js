@@ -8,12 +8,20 @@ const MACRO_RATE_BOUNDS = {
 };
 
 function getAvailableDecisions(state, count) {
+  // سلاسل الأزمات المستحقة هذا الشهر (kind: 'decision') تتجاوز التبريد والشروط المعتادة - القرار وصل موعده حتماً
+  const dueFollowUpIds = (state.pendingFollowUps || [])
+    .filter(f => f.kind === 'decision' && state.month >= f.dueMonth)
+    .map(f => f.id);
+
   const candidates = [];
   DECISIONS.forEach(d => {
-    if (d.oneTime && state.decisionsUsed.includes(d.id)) return;
-    if (d.minMonth && state.month < d.minMonth) return;
-    if (d.cooldown && state.decisionCooldowns[d.id] && state.month < state.decisionCooldowns[d.id]) return;
-    if (d.condition && !d.condition(state)) return;
+    const isDueFollowUp = dueFollowUpIds.includes(d.id);
+    if (!isDueFollowUp) {
+      if (d.oneTime && state.decisionsUsed.includes(d.id)) return;
+      if (d.minMonth && state.month < d.minMonth) return;
+      if (d.cooldown && state.decisionCooldowns[d.id] && state.month < state.decisionCooldowns[d.id]) return;
+      if (d.condition && !d.condition(state)) return;
+    }
 
     if (d.dynamicTarget) {
       // قرارات تستهدف كياناً محدداً (قبيلة/دولة) يُحدَّد وقت العرض بناءً على الوضع الحالي
@@ -23,19 +31,23 @@ function getAvailableDecisions(state, count) {
         ...d,
         title: interpolateTarget(d.title, target),
         description: interpolateTarget(d.description, target),
-        _target: target
+        _target: target,
+        _isFollowUp: isDueFollowUp
       });
     } else {
-      candidates.push(d);
+      candidates.push({ ...d, _isFollowUp: isDueFollowUp });
     }
   });
 
-  // القرارات "الإجبارية" (مثل الانتخابات) يجب أن تظهر حتماً عند بلوغ شهرها المحدد
-  const forced = candidates.filter(d => d.forcedByMonth && state.month >= d.forcedByMonth);
+  // القرارات "الإجبارية" (مثل الانتخابات) أو المجدولة كسلسلة أزمة مستحقة يجب أن تظهر حتماً
+  const forced = candidates.filter(d => (d.forcedByMonth && state.month >= d.forcedByMonth) || d._isFollowUp);
   const rest = candidates.filter(d => !forced.includes(d));
   const shuffledRest = rest.sort(() => Math.random() - 0.5);
 
   const result = [...forced, ...shuffledRest].slice(0, Math.max(count, forced.length));
+  if (dueFollowUpIds.length) {
+    state.pendingFollowUps = state.pendingFollowUps.filter(f => !(f.kind === 'decision' && dueFollowUpIds.includes(f.id) && state.month >= f.dueMonth));
+  }
   return result;
 }
 
