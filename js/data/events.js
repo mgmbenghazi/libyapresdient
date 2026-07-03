@@ -11,7 +11,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'oil_price_crash', category: 'economic', title: 'انهيار أسعار النفط العالمية',
+    id: 'oil_price_crash', severity: 'crisis', category: 'economic', title: 'انهيار أسعار النفط العالمية',
     description: 'تراجعت أسعار النفط العالمية بشكل حاد نتيجة تباطؤ الطلب العالمي، مما يهدد الإيرادات الرئيسية للدولة.',
     weight: 6, minMonth: 2,
     options: [
@@ -21,7 +21,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'global_financial_crisis', category: 'economic', title: 'أزمة مالية عالمية', weight: 2, minMonth: 6,
+    id: 'global_financial_crisis', severity: 'crisis', category: 'economic', title: 'أزمة مالية عالمية', weight: 2, minMonth: 6,
     description: 'تجتاح أزمة مالية عالمية الأسواق، مما يؤثر على الاستثمارات الأجنبية والتجارة الدولية.',
     options: [
       { label: 'تشديد الرقابة المصرفية المحلية', immediate: { budgetBalance: -2, politicalStability: 2 } },
@@ -55,7 +55,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'epidemic', category: 'natural', title: 'تفشي وباء صحي', weight: 2, minMonth: 4,
+    id: 'epidemic', severity: 'crisis', category: 'natural', title: 'تفشي وباء صحي', weight: 2, minMonth: 4,
     description: 'ظهرت حالات مرضية معدية في إحدى المدن الكبرى وتنتشر بسرعة.',
     options: [
       { label: 'فرض إجراءات صحية صارمة وحجر جزئي', immediate: { healthLevel: 2, satisfaction: -5, budgetBalance: -3, economicDevelopment: -2 } },
@@ -73,7 +73,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'terror_attack', category: 'security', title: 'هجوم إرهابي على منشأة حكومية', weight: 3, minMonth: 3,
+    id: 'terror_attack', severity: 'crisis', category: 'security', title: 'هجوم إرهابي على منشأة حكومية', weight: 3, minMonth: 3,
     description: 'استهدف هجوم مسلح منشأة حكومية مما أسفر عن خسائر وأثار قلقاً أمنياً واسعاً.',
     options: [
       { label: 'حملة أمنية فورية وشاملة', immediate: { security: 4, budgetBalance: -4, satisfaction: -2 } },
@@ -81,7 +81,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'tribal_clash', category: 'security', title: 'اشتباكات قبلية في الجنوب', weight: 3, minMonth: 2,
+    id: 'tribal_clash', severity: 'crisis', category: 'security', title: 'اشتباكات قبلية في الجنوب', weight: 3, minMonth: 2,
     description: 'اندلعت اشتباكات مسلحة بين قبيلتين في منطقة فزان بسبب نزاع على موارد.',
     options: [
       { label: 'إرسال وسطاء ومجلس حكماء للمصالحة', immediate: { politicalStability: 2, budgetBalance: -1 } },
@@ -89,7 +89,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'protests', category: 'political', title: 'مظاهرات شعبية في العاصمة', weight: 4,
+    id: 'protests', severity: 'crisis', category: 'political', title: 'مظاهرات شعبية في العاصمة', weight: 4,
     description: 'خرجت مظاهرات حاشدة في طرابلس للمطالبة بتحسين الخدمات ومحاربة الفساد.',
     condition: (s) => s.indicators.satisfaction < 40,
     options: [
@@ -209,7 +209,7 @@ const EVENTS = [
     ]
   },
   {
-    id: 'cyber_attack', category: 'security', title: 'هجوم إلكتروني على بنية تحتية حكومية', weight: 2, minMonth: 16,
+    id: 'cyber_attack', severity: 'crisis', category: 'security', title: 'هجوم إلكتروني على بنية تحتية حكومية', weight: 2, minMonth: 16,
     description: 'تعرضت أنظمة حكومية رقمية لهجوم إلكتروني أدى لتعطل مؤقت في بعض الخدمات.',
     options: [
       { label: 'استثمار عاجل في الأمن السيبراني', immediate: { budgetBalance: -2, infrastructureLevel: 1, security: 2 } },

@@ -199,7 +199,7 @@ const DECISIONS = [
     ]
   },
   {
-    id: 'counter_terrorism', category: 'security', type: 'tactical', title: 'استراتيجية مكافحة الإرهاب',
+    id: 'counter_terrorism', severity: 'crisis', category: 'security', type: 'tactical', title: 'استراتيجية مكافحة الإرهاب',
     description: 'يطلب مستشارك الأمني تبني استراتيجية واضحة للتعامل مع خلايا متطرفة نشطة في بعض المناطق.',
     condition: (s) => s.indicators.security < 45,
     cooldown: 12,

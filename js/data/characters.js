@@ -173,3 +173,75 @@ const CHARACTER_CATEGORIES = [
   { id: 'civil', name: 'المجتمع المدني' },
   { id: 'foreign', name: 'ممثلو القوى الأجنبية' }
 ];
+
+// شبكة العلاقات بين الشخصيات (غير موجهة): موجب = تحالف، سالب = خصومة، مقياس 100-100-
+const CHARACTER_RELATIONS = [
+  { a: 'zenati', b: 'misrati', value: 60 },
+  { a: 'zenati', b: 'suwaidi', value: 45 },
+  { a: 'zenati', b: 'opp_leader', value: -55 },
+  { a: 'misrati', b: 'tripoli_banker', value: 50 },
+  { a: 'misrati', b: 'benghazi_biz', value: -30 },
+  { a: 'ftaisi', b: 'benghazi_biz', value: 65 },
+  { a: 'ftaisi', b: 'journalist', value: -50 },
+  { a: 'gharyani', b: 'obeidi', value: 55 },
+  { a: 'gharyani', b: 'zintan_chief', value: 40 },
+  { a: 'obeidi', b: 'activist_leader', value: -45 },
+  { a: 'warfalla_chief', b: 'magarha_chief', value: 35 },
+  { a: 'warfalla_chief', b: 'zintan_chief', value: -25 },
+  { a: 'misrata_chief', b: 'zintan_chief', value: -40 },
+  { a: 'misrata_chief', b: 'benghazi_biz', value: 30 },
+  { a: 'tebu_chief', b: 'tuareg_chief', value: 50 },
+  { a: 'tebu_chief', b: 'sabha_trader', value: 35 },
+  { a: 'rights_activist', b: 'journalist', value: 55 },
+  { a: 'rights_activist', b: 'imam_hardline', value: -60 },
+  { a: 'rights_activist', b: 'mufti', value: 20 },
+  { a: 'opp_leader', b: 'activist_leader', value: 50 },
+  { a: 'opp_leader', b: 'media_anchor', value: 25 },
+  { a: 'journalist', b: 'benghazi_biz', value: -55 },
+  { a: 'mufti', b: 'imam_hardline', value: -35 },
+  { a: 'mufti', b: 'warfalla_chief', value: 30 },
+  { a: 'media_anchor', b: 'sallabi', value: 20 },
+  { a: 'ngo_leader', b: 'rights_activist', value: 40 },
+  { a: 'amb_usa', b: 'amb_russia', value: -50 },
+  { a: 'amb_usa', b: 'suwaidi', value: 30 },
+  { a: 'amb_china', b: 'sallabi', value: 35 },
+  { a: 'amb_russia', b: 'gharyani', value: 25 },
+  { a: 'amb_eu', b: 'rights_activist', value: 30 },
+  { a: 'tripoli_banker', b: 'zenati', value: 35 },
+  { a: 'sabha_trader', b: 'obeidi', value: -20 },
+  { a: 'abusetta', b: 'rights_activist', value: 25 },
+  { a: 'tarhouni', b: 'ngo_leader', value: 30 }
+];
+
+function getCharacterRelations(state, charId) {
+  return state.characterRelations
+    .filter(r => r.a === charId || r.b === charId)
+    .map(r => {
+      const otherId = r.a === charId ? r.b : r.a;
+      return { otherId, value: r.value };
+    })
+    .sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
+}
+
+// مولّد شخصيات خلَف عند تقاعد/استبدال شخصية بمرور الوقت
+const NAME_POOL_FIRST = ['محمد', 'علي', 'عبدالله', 'خالد', 'سالم', 'يوسف', 'إبراهيم', 'عمر', 'فيصل', 'ياسين', 'منى', 'ليلى', 'سمية', 'آمنة', 'هدى', 'رانية', 'نجاة', 'كريم'];
+const NAME_POOL_LAST = ['الطرابلسي', 'البنغازي', 'الفزاني', 'المصراتي', 'الزنتاني', 'الورفلي', 'الساحلي', 'الجبلي', 'العبيدي', 'الشريف', 'القبائلي', 'الككلي'];
+
+function generateSuccessor(baseChar) {
+  const first = NAME_POOL_FIRST[Math.floor(Math.random() * NAME_POOL_FIRST.length)];
+  const last = NAME_POOL_LAST[Math.floor(Math.random() * NAME_POOL_LAST.length)];
+  const jitter = () => Math.round((Math.random() - 0.5) * 20);
+  const stats = {};
+  Object.entries(baseChar.stats).forEach(([k, v]) => { stats[k] = Math.max(10, Math.min(90, v + jitter())); });
+  return {
+    id: baseChar.id + '_gen' + Date.now() + Math.floor(Math.random() * 1000),
+    name: `${first} ${last}`,
+    role: baseChar.role,
+    category: baseChar.category,
+    tribe: baseChar.tribe, region: baseChar.region, country: baseChar.country,
+    bio: `خَلَف جديد تولى دور "${baseChar.role}" بعد ${baseChar.name}.`,
+    stats, politicalLean: baseChar.politicalLean,
+    traits: Math.random() < 0.4 ? [Object.keys(TRAITS)[Math.floor(Math.random() * Object.keys(TRAITS).length)]] : [],
+    ministry: null, cooldownUntil: 0, busyUntil: 0
+  };
+}

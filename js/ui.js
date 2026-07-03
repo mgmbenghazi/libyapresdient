@@ -278,11 +278,13 @@ function renderCharacterGrid() {
   const filter = Game.charFilter || 'all';
   const list = Game.state.characters.filter(c => filter === 'all' || c.category === filter);
   list.forEach(ch => {
+    const busy = isCharacterBusy(Game.state, ch.id);
     const card = document.createElement('div');
     card.className = 'option-card char-card';
     card.innerHTML = `<div class="char-avatar">${initials(ch.name)}</div>
       <h3>${ch.name}</h3>
       <div class="char-role">${ch.role}</div>
+      ${busy ? `<span class="trait-chip busy-chip">🕓 في مهمة</span>` : ''}
       ${statMiniBar('الولاء', ch.stats.loyalty)}
       ${statMiniBar('الشعبية', ch.stats.popularity)}
       ${statMiniBar('الكفاءة', ch.stats.competence)}`;
@@ -291,8 +293,22 @@ function renderCharacterGrid() {
   });
 }
 
+function relationsListHtml(ch) {
+  const rels = getCharacterRelations(Game.state, ch.id).slice(0, 3);
+  if (rels.length === 0) return '';
+  const items = rels.map(r => {
+    const other = getCharacter(Game.state, r.otherId);
+    if (!other) return '';
+    const label = r.value >= 0 ? 'تحالف' : 'خصومة';
+    const cls = r.value >= 0 ? 'chip-good' : 'chip-bad';
+    return `<span class="effect-chip ${cls}">${other.name} (${label} ${Math.abs(Math.round(r.value))})</span>`;
+  }).join('');
+  return `<div class="field-label" style="margin-top:14px">أبرز العلاقات</div><div class="effect-preview">${items}</div>`;
+}
+
 function characterModalHtml(ch) {
   const traitsHtml = (ch.traits || []).map(t => `<span class="trait-chip">${TRAITS[t] ? TRAITS[t].name : t}</span>`).join('');
+  const busy = isCharacterBusy(Game.state, ch.id);
   return `
     <span class="modal-tag">${CHARACTER_CATEGORIES.find(c => c.id === ch.category) ? CHARACTER_CATEGORIES.find(c => c.id === ch.category).name : ''}</span>
     <div class="char-modal-header">
@@ -301,6 +317,7 @@ function characterModalHtml(ch) {
     </div>
     <p class="modal-desc">${ch.bio}</p>
     <div>${traitsHtml || '<span class="hint">لا توجد سمات خاصة</span>'}</div>
+    ${busy ? `<div class="opinion-box">🕓 مشغول بمهمة حتى الشهر ${ch.busyUntil}.</div>` : ''}
     <div class="char-stats-grid">
       ${statMiniBar('الولاء', ch.stats.loyalty)}
       ${statMiniBar('الكفاءة', ch.stats.competence)}
@@ -309,11 +326,13 @@ function characterModalHtml(ch) {
       ${statMiniBar('الطموح', ch.stats.ambition)}
       ${statMiniBar('الفساد', ch.stats.corruption)}
     </div>
+    ${relationsListHtml(ch)}
     <div id="char-opinion-slot"></div>
     <div class="char-actions-row">
       <button class="btn" id="act-consult">استشارة</button>
       <button class="btn" id="act-reward">مكافأة (${REWARD_COST} مليون د.ل)</button>
       <button class="btn btn-ghost" id="act-punish">عقاب</button>
+      <button class="btn" id="act-mission" ${busy ? 'disabled' : ''}>تكليف بمهمة</button>
       ${ch.category === 'government' || !ch.ministry ? `<button class="btn btn-primary" id="act-appoint">تعيين وزارياً</button>` : ''}
       ${ch.ministry ? `<button class="btn btn-ghost" id="act-dismiss">إقالة من المنصب</button>` : ''}
     </div>`;
@@ -347,6 +366,58 @@ function bindCharacterModalActions(charId) {
     dismissFromMinistry(Game.state, ch.ministry);
     hideModal();
     renderCabinetGrid(); renderCharacterGrid();
+  });
+  const missionBtn = document.getElementById('act-mission');
+  if (missionBtn) missionBtn.addEventListener('click', () => openMissionModal(charId));
+}
+
+function openMissionModal(charId) {
+  const ch = getCharacter(Game.state, charId);
+  const html = `
+    <span class="modal-tag">تكليف بمهمة</span>
+    <h2>اختر نوع المهمة لـ ${ch.name}</h2>
+    <div class="decision-options">
+      ${MISSION_TYPES.map(t => `
+        <div class="decision-option" data-mission="${t.id}">
+          <div class="opt-label">${t.name}</div>
+          <div class="opt-advisor">تستغرق ${t.duration} أشهر، تؤثر على ${INDICATOR_META[t.effectKey].name}${t.requiresCountry ? ' تجاه دولة محددة' : ''}.</div>
+        </div>`).join('')}
+    </div>`;
+  showModal(html);
+  document.querySelectorAll('[data-mission]').forEach(el => {
+    el.addEventListener('click', () => {
+      const type = MISSION_TYPES.find(t => t.id === el.dataset.mission);
+      if (type.requiresCountry) {
+        hideModal();
+        openMissionCountryModal(charId, type.id);
+      } else {
+        const res = assignMission(Game.state, charId, type.id);
+        hideModal();
+        renderCharacterGrid();
+      }
+    });
+  });
+}
+
+function openMissionCountryModal(charId, missionTypeId) {
+  const ch = getCharacter(Game.state, charId);
+  const html = `
+    <span class="modal-tag">اختر الدولة المستهدفة</span>
+    <h2>مهمة دبلوماسية لـ ${ch.name}</h2>
+    <div class="decision-options" style="max-height:50vh;overflow-y:auto">
+      ${Game.state.relations.countries.map(c => `
+        <div class="decision-option" data-country="${c.id}">
+          <div class="opt-label">${c.name}</div>
+          <div class="opt-advisor">مستوى العلاقة الحالي: ${Math.round(c.relation)}</div>
+        </div>`).join('')}
+    </div>`;
+  showModal(html);
+  document.querySelectorAll('[data-country]').forEach(el => {
+    el.addEventListener('click', () => {
+      assignMission(Game.state, charId, missionTypeId, el.dataset.country);
+      hideModal();
+      renderCharacterGrid();
+    });
   });
 }
 
@@ -415,8 +486,10 @@ function renderEndScreen(result) {
 }
 
 // ------- نوافذ منبثقة -------
-function showModal(html, buttons) {
-  document.getElementById('modal-box').innerHTML = html;
+function showModal(html, isCrisis) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  box.classList.toggle('crisis-modal', !!isCrisis);
   const overlay = document.getElementById('modal-overlay');
   overlay.classList.add('active');
 }
@@ -469,8 +542,9 @@ function effectPreviewHtml(effects) {
 }
 
 function renderDecisionModal(decision, onChoose) {
+  const isCrisis = decision.severity === 'crisis';
   const html = `
-    <span class="modal-tag">قرار ${decisionTypeLabel(decision.type)}</span>
+    <span class="modal-tag">${isCrisis ? '⚠️ قرار طارئ' : 'قرار ' + decisionTypeLabel(decision.type)}</span>
     <h2>${decision.title}</h2>
     <p class="modal-desc">${decision.description}</p>
     <div class="decision-options">
@@ -481,7 +555,7 @@ function renderDecisionModal(decision, onChoose) {
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
-  showModal(html);
+  showModal(html, isCrisis);
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
       const idx = Number(el.dataset.idx);
@@ -496,8 +570,9 @@ function decisionTypeLabel(t) {
 }
 
 function renderEventModal(event, onChoose) {
+  const isCrisis = event.severity === 'crisis';
   const html = `
-    <span class="modal-tag">حدث عاجل</span>
+    <span class="modal-tag">${isCrisis ? '⚠️ حالة طارئة' : 'حدث عاجل'}</span>
     <h2>${event.title}</h2>
     <p class="modal-desc">${event.description}</p>
     <div class="decision-options">
@@ -507,7 +582,7 @@ function renderEventModal(event, onChoose) {
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
-  showModal(html);
+  showModal(html, isCrisis);
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
       const idx = Number(el.dataset.idx);

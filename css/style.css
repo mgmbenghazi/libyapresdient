@@ -245,6 +245,14 @@ input[type="text"] {
   box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 .modal-box h2 { color: var(--gold); font-size: 1.3rem; }
+.modal-box.crisis-modal { border: 2px solid var(--bad); box-shadow: 0 0 0 4px rgba(229,72,77,.15), 0 20px 60px rgba(0,0,0,.6); animation: crisisPulse 1.8s ease-in-out infinite; }
+.modal-box.crisis-modal h2 { color: var(--bad); }
+.modal-box.crisis-modal .modal-tag { background: var(--bad); color: #fff; }
+@keyframes crisisPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(229,72,77,.15), 0 20px 60px rgba(0,0,0,.6); }
+  50% { box-shadow: 0 0 0 8px rgba(229,72,77,.3), 0 20px 60px rgba(0,0,0,.6); }
+}
+.busy-chip { background: rgba(224,167,43,.2); color: var(--medium); border: 1px solid rgba(224,167,43,.4); }
 .modal-box .modal-desc { color: var(--text-dim); line-height: 1.7; margin-bottom: 18px; }
 .modal-tag { display: inline-block; font-size: .75rem; padding: 3px 12px; border-radius: 20px; background: #2c3a2a; color: var(--text-dim); margin-bottom: 10px; }
 .decision-options { display: flex; flex-direction: column; gap: 10px; }
