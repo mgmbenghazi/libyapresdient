@@ -1,0 +1,203 @@
+// المتحكم الرئيسي في اللعبة
+const Game = {
+  state: null,
+  selectedScenario: null,
+  selectedBackground: null,
+  queue: []
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  bindStartScreen();
+  bindCharacterScreen();
+  bindGameScreen();
+  bindEndScreen();
+  bindBackButtons();
+
+  const saved = loadGame();
+  document.getElementById('btn-continue').disabled = !saved;
+});
+
+function bindBackButtons() {
+  document.querySelectorAll('[data-back]').forEach(btn => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.back));
+  });
+}
+
+function bindStartScreen() {
+  document.getElementById('btn-new-game').addEventListener('click', () => {
+    showScreen('screen-scenario');
+    renderScenarioList();
+  });
+  document.getElementById('btn-continue').addEventListener('click', () => {
+    const saved = loadGame();
+    if (!saved) return;
+    Game.state = saved;
+    showScreen('screen-game');
+    renderGameScreen();
+  });
+  document.getElementById('btn-how-to-play').addEventListener('click', () => {
+    showModal(`
+      <span class="modal-tag">دليل اللعبة</span>
+      <h2>كيف ألعب رئيس ليبيا؟</h2>
+      <p class="modal-desc">
+      تتولى منصب رئيس ليبيا لمدة أربع سنوات (48 شهراً). كل شهر ستحصل على تقرير موجز، وقد تواجه قرارات استراتيجية أو تكتيكية وأحداثاً عشوائية تتطلب استجابتك.
+      وزّع الميزانية العامة بين القطاعات من تبويب "الميزانية"، وراقب مؤشرات الرضا الشعبي والاقتصاد والأمن والعلاقات الدولية من لوحة المؤشرات.
+      إهمال قطاع ما لفترة طويلة يضر بمؤشراته، والإنفاق المفرط دون إيرادات كافية يقود لعجز وديون. حافظ على التوازن لتُكمل فترتك الرئاسية بنجاح!
+      </p>
+      <div class="nav-row"><button class="btn btn-primary" id="modal-continue">فهمت</button></div>`);
+    document.getElementById('modal-continue').addEventListener('click', hideModal);
+  });
+}
+
+function bindCharacterScreen() {
+  document.getElementById('btn-start-intro').addEventListener('click', () => {
+    const nameInput = document.getElementById('input-president-name');
+    const name = nameInput.value.trim() || 'الرئيس';
+    if (!Game.selectedScenario) { showScreen('screen-scenario'); return; }
+    if (!Game.selectedBackground) Game.selectedBackground = POLITICAL_BACKGROUNDS[0].id;
+
+    Game.state = createInitialState(Game.selectedScenario, name, Game.selectedBackground, {});
+    Game.state.history.push(snapshotIndicators(Game.state));
+    renderIntro();
+    showScreen('screen-intro');
+  });
+  document.getElementById('btn-begin-rule').addEventListener('click', () => {
+    showScreen('screen-game');
+    renderGameScreen();
+  });
+}
+
+function snapshotIndicators(state) {
+  return { month: state.month, ...state.indicators, oilPrice: state.economy.oilPrice };
+}
+
+function bindGameScreen() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    saveGame(Game.state);
+    flashSaveButton();
+  });
+
+  document.getElementById('btn-next-month').addEventListener('click', () => {
+    document.getElementById('btn-next-month').disabled = true;
+    advanceMonth();
+  });
+}
+
+function flashSaveButton() {
+  const btn = document.getElementById('btn-save');
+  const original = btn.textContent;
+  btn.textContent = 'تم الحفظ ✓';
+  setTimeout(() => { btn.textContent = original; }, 1500);
+}
+
+function bindEndScreen() {
+  document.getElementById('btn-play-again').addEventListener('click', () => {
+    clearSave();
+    Game.state = null;
+    Game.selectedScenario = null;
+    Game.selectedBackground = null;
+    showScreen('screen-scenario');
+    renderScenarioList();
+  });
+  document.getElementById('btn-back-menu').addEventListener('click', () => {
+    showScreen('screen-start');
+  });
+}
+
+// ------- تدفق تقدم الشهر -------
+function advanceMonth() {
+  const s = Game.state;
+  Game.queue = [];
+
+  const isNewYearStart = s.month > 1 && (s.month - 1) % 12 === 0;
+  if (isNewYearStart) {
+    Game.queue.push({ type: 'yearstart' });
+  }
+
+  Game.queue.push({ type: 'tick' });
+  Game.queue.push({ type: 'report' });
+
+  const decisionCount = Math.random() < 0.35 ? 2 : 1;
+  const decisions = getAvailableDecisions(s, decisionCount);
+  decisions.forEach(d => Game.queue.push({ type: 'decision', payload: d }));
+
+  const event = rollEvent(s);
+  if (event) Game.queue.push({ type: 'event', payload: event });
+
+  Game.queue.push({ type: 'checkend' });
+
+  processQueue();
+}
+
+let lastTickSummary = null;
+
+function processQueue() {
+  if (Game.queue.length === 0) {
+    document.getElementById('btn-next-month').disabled = false;
+    renderGameScreen();
+    return;
+  }
+  const step = Game.queue.shift();
+  const s = Game.state;
+
+  if (step.type === 'yearstart') {
+    renderYearStartModal(() => processQueue());
+    return;
+  }
+
+  if (step.type === 'tick') {
+    processScheduledEffects(s);
+    lastTickSummary = monthlyEconomicTick(s);
+    monthlyRelationsTick(s);
+    s.history.push(snapshotIndicators(s));
+    if (s.history.length > 60) s.history.shift();
+    processQueue();
+    return;
+  }
+
+  if (step.type === 'report') {
+    renderReportModal(lastTickSummary, () => processQueue());
+    return;
+  }
+
+  if (step.type === 'decision') {
+    renderDecisionModal(step.payload, (idx) => {
+      applyDecisionOption(s, step.payload, idx);
+      processQueue();
+    });
+    return;
+  }
+
+  if (step.type === 'event') {
+    renderEventModal(step.payload, (idx) => {
+      applyEventOption(s, step.payload, idx);
+      processQueue();
+    });
+    return;
+  }
+
+  if (step.type === 'checkend') {
+    const result = checkGameOver(s);
+    s.month += 1;
+    s.year = Math.min(4, Math.max(1, Math.ceil(s.month / 12)));
+    if (result.over) {
+      s.gameOver = true;
+      s.gameOverReason = result.reason;
+      saveGame(s);
+      renderEndScreen(result);
+      return;
+    }
+    saveGame(s);
+    processQueue();
+    return;
+  }
+}

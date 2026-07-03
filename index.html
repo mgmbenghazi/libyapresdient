@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>رئيس ليبيا - لعبة محاكاة سياسية واقتصادية</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- شاشة البداية -->
+<section id="screen-start" class="screen active">
+  <div class="start-bg">
+    <div class="start-content">
+      <div class="game-logo">
+        <span class="flag-stripe green"></span>
+        <span class="flag-stripe black star">☆</span>
+        <span class="flag-stripe red"></span>
+      </div>
+      <h1>رئيس ليبيا</h1>
+      <p class="subtitle">لعبة محاكاة استراتيجية سياسية واقتصادية</p>
+      <div class="menu-buttons">
+        <button id="btn-new-game" class="btn btn-primary">بدء لعبة جديدة</button>
+        <button id="btn-continue" class="btn">استكمال اللعبة المحفوظة</button>
+        <button id="btn-how-to-play" class="btn btn-ghost">كيف ألعب؟</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة اختيار السيناريو -->
+<section id="screen-scenario" class="screen">
+  <div class="panel-wrap">
+    <h2>اختر سيناريو البداية</h2>
+    <div id="scenario-list" class="card-grid"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" data-back="screen-start">رجوع</button>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة تخصيص الشخصية -->
+<section id="screen-character" class="screen">
+  <div class="panel-wrap">
+    <h2>تخصيص الرئيس</h2>
+    <label class="field-label">اسم الرئيس</label>
+    <input type="text" id="input-president-name" placeholder="اكتب اسم الرئيس" maxlength="30">
+    <label class="field-label">الخلفية السياسية</label>
+    <div id="background-list" class="card-grid small"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" data-back="screen-scenario">رجوع</button>
+      <button id="btn-start-intro" class="btn btn-primary">بدء الرئاسة</button>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة المقدمة -->
+<section id="screen-intro" class="screen">
+  <div class="panel-wrap intro-panel">
+    <h2 id="intro-title"></h2>
+    <p id="intro-text" class="intro-text"></p>
+    <div class="nav-row">
+      <button id="btn-begin-rule" class="btn btn-primary">تولي الحكم</button>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة اللعبة الرئيسية -->
+<section id="screen-game" class="screen">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span id="hud-president"></span>
+      <span id="hud-date" class="hud-date"></span>
+    </div>
+    <nav class="tabbar">
+      <button class="tab-btn active" data-tab="dashboard">لوحة المؤشرات</button>
+      <button class="tab-btn" data-tab="budget">الميزانية</button>
+      <button class="tab-btn" data-tab="relations">العلاقات</button>
+      <button class="tab-btn" data-tab="log">السجل</button>
+    </nav>
+    <div class="topbar-right">
+      <button id="btn-save" class="btn btn-small">حفظ</button>
+      <button id="btn-next-month" class="btn btn-primary btn-small">الشهر التالي ⟵</button>
+    </div>
+  </header>
+
+  <main class="game-main">
+    <!-- تبويب لوحة المؤشرات -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div id="indicator-cards" class="indicator-grid"></div>
+      <div class="charts-row">
+        <div class="chart-box"><h3>رضا الشعب</h3><canvas id="chart-satisfaction"></canvas></div>
+        <div class="chart-box"><h3>الاقتصاد (النمو %)</h3><canvas id="chart-growth"></canvas></div>
+        <div class="chart-box"><h3>إنتاج النفط</h3><canvas id="chart-oil"></canvas></div>
+      </div>
+      <div class="regions-row" id="regions-row"></div>
+    </div>
+
+    <!-- تبويب الميزانية -->
+    <div id="tab-budget" class="tab-panel">
+      <h3>توزيع الميزانية على القطاعات</h3>
+      <p class="hint">اسحب الأشرطة لتعديل نسبة كل قطاع من الإنفاق. التوزيع الجيد يحسّن مؤشرات القطاعات، والإهمال يضر بها.</p>
+      <div id="budget-sliders"></div>
+      <div id="budget-summary" class="budget-summary"></div>
+    </div>
+
+    <!-- تبويب العلاقات -->
+    <div id="tab-relations" class="tab-panel">
+      <h3>العلاقات الداخلية</h3>
+      <div class="relations-grid">
+        <div><h4>القبائل</h4><div id="rel-tribes" class="rel-list"></div></div>
+        <div><h4>التيارات السياسية</h4><div id="rel-parties" class="rel-list"></div></div>
+        <div><h4>المؤسسات</h4><div id="rel-institutions" class="rel-list"></div></div>
+      </div>
+      <h3>العلاقات الدولية</h3>
+      <div class="relations-grid">
+        <div><h4>الدول</h4><div id="rel-countries" class="rel-list"></div></div>
+        <div><h4>المنظمات الدولية</h4><div id="rel-orgs" class="rel-list"></div></div>
+      </div>
+    </div>
+
+    <!-- تبويب السجل -->
+    <div id="tab-log" class="tab-panel">
+      <h3>سجل القرارات والأحداث</h3>
+      <div id="log-list" class="log-list"></div>
+    </div>
+  </main>
+</section>
+
+<!-- شاشة نهاية اللعبة -->
+<section id="screen-end" class="screen">
+  <div class="panel-wrap end-panel">
+    <h2 id="end-title"></h2>
+    <p id="end-reason"></p>
+    <div class="end-grid">
+      <div class="end-col">
+        <h3>المؤشرات النهائية</h3>
+        <div id="end-indicators"></div>
+      </div>
+      <div class="end-col">
+        <h3>ملخص الحكم</h3>
+        <div id="end-summary"></div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button id="btn-play-again" class="btn btn-primary">لعبة جديدة</button>
+      <button id="btn-back-menu" class="btn btn-ghost">القائمة الرئيسية</button>
+    </div>
+  </div>
+</section>
+
+<!-- طبقة النوافذ المنبثقة (تقارير، قرارات، أحداث، ميزانية سنوية) -->
+<div id="modal-overlay" class="modal-overlay">
+  <div id="modal-box" class="modal-box"></div>
+</div>
+
+<script src="js/data/scenarios.js"></script>
+<script src="js/data/sectors.js"></script>
+<script src="js/data/decisions.js"></script>
+<script src="js/data/events.js"></script>
+<script src="js/data/relations.js"></script>
+<script src="js/state.js"></script>
+<script src="js/systems/economy.js"></script>
+<script src="js/systems/decisions.js"></script>
+<script src="js/systems/events.js"></script>
+<script src="js/systems/relations.js"></script>
+<script src="js/systems/gameover.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
