@@ -277,5 +277,202 @@ const DECISIONS = [
       { label: 'رفض العرض والتركيز على النفط والغاز', advisor: 'المستشار الاقتصادي: يفوت فرصة تنويع طويلة الأمد.',
         immediate: {}, medium: {}, long: {} }
     ]
+  },
+
+  // ------- قطاعات جديدة: زراعة، سياحة، صناعة، تجارة -------
+  {
+    id: 'agriculture_investment', category: 'economic', type: 'tactical', title: 'الاستثمار في القطاع الزراعي',
+    description: 'تعاني الأراضي الزراعية في الجبل الأخضر وسهل الجفارة وواحات فزان من ضعف الاستثمار وشبكات الري القديمة.',
+    minMonth: 3, cooldown: 12,
+    options: [
+      { label: 'مشاريع استصلاح أراضٍ وري حديث واسعة', advisor: 'مستشار الزراعة: أثر كبير لكنه يحتاج تمويلاً ضخماً.',
+        immediate: { budgetBalance: -5 }, medium: { agricultureLevel: 6 }, long: { agricultureLevel: 5, poverty: -2 } },
+      { label: 'دعم المزارعين بالتقاوي والمعدات', advisor: 'مستشار الزراعة: تكلفة معقولة بنتائج متوسطة.',
+        immediate: { budgetBalance: -2, satisfaction: 1 }, medium: { agricultureLevel: 3 }, long: {} },
+      { label: 'تجاهل القطاع الزراعي حالياً', advisor: 'مستشار الزراعة: استمرار الاعتماد على الاستيراد الغذائي.',
+        immediate: {}, medium: { agricultureLevel: -1 }, long: {} }
+    ]
+  },
+  {
+    id: 'tourism_development', category: 'economic', type: 'tactical', title: 'تطوير القطاع السياحي',
+    description: 'مواقع أثرية مثل لبدة وصبراتة وشحات، إلى جانب واحات غدامس وغات، تحمل إمكانات سياحية كبيرة لم تُستغل بعد.',
+    minMonth: 4, cooldown: 12,
+    options: [
+      { label: 'ترميم المواقع الأثرية وتطوير بنية سياحية متكاملة', advisor: 'مستشار السياحة: استثمار كبير بعائد متوسط المدى.',
+        immediate: { budgetBalance: -5 }, medium: { tourismLevel: 5 }, long: { tourismLevel: 6, internationalSupport: 2 } },
+      { label: 'حملات ترويجية دولية محدودة التكلفة', advisor: 'مستشار السياحة: خطوة أولى منخفضة المخاطر.',
+        immediate: { budgetBalance: -1 }, medium: { tourismLevel: 2 }, long: {} },
+      { label: 'تأجيل الاستثمار السياحي لحين تحسن الأمن', advisor: 'مستشار السياحة: قرار حذر لكنه يفوّت فرصاً.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'industrial_zones', category: 'economic', type: 'strategic', title: 'إنشاء مناطق صناعية متكاملة',
+    description: 'يقترح مستشاروك إنشاء مناطق صناعية متكاملة لتصنيع مواد البناء والمعادن والمنسوجات وتقليل الاعتماد على الاستيراد.',
+    minMonth: 8, oneTime: true,
+    options: [
+      { label: 'إنشاء مناطق صناعية كبرى بشراكة حكومية-خاصة', advisor: 'المستشار الاقتصادي: يخلق وظائف صناعية حقيقية.',
+        immediate: { budgetBalance: -6 }, medium: { industryLevel: 5, unemployment: -2 }, long: { industryLevel: 6, tradeBalance: 4 } },
+      { label: 'حوافز ضريبية لمستثمرين صناعيين محليين', advisor: 'المستشار الاقتصادي: أقل تكلفة مباشرة على الخزينة.',
+        immediate: { budgetBalance: -1 }, medium: { industryLevel: 2 }, long: { industryLevel: 3 } },
+      { label: 'التركيز على الصناعات البتروكيماوية فقط', advisor: 'وزير النفط: يستغل الغاز الطبيعي كمادة خام رخيصة.',
+        immediate: { budgetBalance: -3 }, medium: { industryLevel: 3, oilProduction: 20 }, long: { industryLevel: 3 } }
+    ]
+  },
+  {
+    id: 'trade_agreements', category: 'diplomatic', type: 'diplomatic', title: 'اتفاقيات تجارة حرة إقليمية',
+    description: 'تعرض عدة دول جوار وأعضاء في اتحاد المغرب العربي توقيع اتفاقيات تجارة حرة مع ليبيا.',
+    minMonth: 6, cooldown: 14,
+    options: [
+      { label: 'توقيع اتفاقيات تجارة حرة واسعة', advisor: 'المستشار الدبلوماسي: يفتح أسواقاً جديدة للصادرات غير النفطية.',
+        immediate: { internationalSupport: 3 }, medium: { tradeBalance: 3 }, long: { tradeBalance: 4, industryLevel: 2 } },
+      { label: 'اتفاقيات محدودة مع دول مختارة فقط', advisor: 'المستشار الدبلوماسي: أكثر حذراً وأقل مخاطرة.',
+        immediate: { internationalSupport: 1 }, medium: { tradeBalance: 1 }, long: {} },
+      { label: 'تأجيل الملف والتركيز على السوق المحلي', advisor: 'المستشار الاقتصادي: حماية مؤقتة للصناعات المحلية الناشئة.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'customs_reform', category: 'economic', type: 'tactical', title: 'إصلاح النظام الجمركي',
+    description: 'تعاني الموانئ والمنافذ الحدودية من بطء إجراءات جمركية وتسرب إيرادات كبير عبر التهريب.',
+    minMonth: 10, cooldown: 12,
+    options: [
+      { label: 'أتمتة كاملة للإجراءات الجمركية في الموانئ الكبرى', advisor: 'وزير المالية: يرفع الإيرادات ويقلل الفساد على المدى المتوسط.',
+        immediate: { budgetBalance: -3 }, medium: { budgetBalance: 4, tradeBalance: 2 }, long: { tradeBalance: 3 } },
+      { label: 'حملة مكافحة تهريب مكثفة على الحدود', advisor: 'وزير الداخلية: نتائج سريعة لكنها تحتاج تعزيزاً أمنياً مستمراً.',
+        immediate: { budgetBalance: -2, security: 1 }, medium: { budgetBalance: 3 }, long: {} },
+      { label: 'الإبقاء على النظام الحالي', advisor: 'وزير المالية: استمرار تسرب الإيرادات.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'mining_sector', category: 'economic', type: 'tactical', title: 'استغلال الثروة المعدنية',
+    description: 'تشير مسوحات جيولوجية إلى وجود احتياطيات واعدة من الحديد والمنغنيز والذهب والفوسفات في مناطق مختلفة.',
+    minMonth: 12, cooldown: 16,
+    options: [
+      { label: 'إطلاق مسح جيولوجي شامل وجذب استثمار تعديني', advisor: 'المستشار الاقتصادي: استثمار طويل الأمد بعائد مؤجل.',
+        immediate: { budgetBalance: -4 }, medium: { industryLevel: 2 }, long: { industryLevel: 4, tradeBalance: 3 } },
+      { label: 'منح تراخيص تعدين محدودة لشركات محلية', advisor: 'المستشار الاقتصادي: مخاطر أقل، عائد أبطأ.',
+        immediate: {}, medium: { industryLevel: 1 }, long: { industryLevel: 2 } },
+      { label: 'تأجيل استغلال الثروة المعدنية', advisor: 'المستشار الاقتصادي: يحافظ على الموارد لكنه يفوّت دخلاً محتملاً.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'sovereign_wealth_fund', category: 'economic', type: 'strategic', title: 'إنشاء صندوق الثروة السيادي',
+    description: 'يقترح وزير المالية إنشاء صندوق سيادي لاستثمار فوائض النفط بعيداً عن الإنفاق الجاري، لضمان استدامة مالية للأجيال القادمة.',
+    minMonth: 6, oneTime: true,
+    condition: (s) => s.indicators.treasury > 5000,
+    options: [
+      { label: 'تخصيص نسبة كبيرة من الفوائض للصندوق السيادي', advisor: 'وزير المالية: استدامة مالية قوية لكنها تقلل الإنفاق الحالي المتاح.',
+        immediate: { treasury: -6000, forexReserves: 6000 }, medium: { economicDevelopment: 2 }, long: { publicDebt: -5, economicDevelopment: 4 } },
+      { label: 'تخصيص نسبة معتدلة', advisor: 'وزير المالية: توازن بين الحاضر والمستقبل.',
+        immediate: { treasury: -2500, forexReserves: 2500 }, medium: {}, long: { economicDevelopment: 2 } },
+      { label: 'عدم إنشاء الصندوق حالياً', advisor: 'وزير المالية: مرونة إنفاق أكبر الآن، لا حماية مستقبلية.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'free_trade_zone', category: 'economic', type: 'strategic', title: 'إنشاء منطقة تجارة حرة في ميناء رئيسي',
+    description: 'يقترح مستثمرون أجانب إنشاء منطقة تجارة حرة في أحد الموانئ الكبرى لجذب الصناعات التصديرية.',
+    minMonth: 14, oneTime: true,
+    options: [
+      { label: 'الموافقة وتقديم حوافز ضريبية كبيرة', advisor: 'المستشار الاقتصادي: جاذبية استثمارية عالية بكلفة إيرادات ضريبية مؤجلة.',
+        immediate: { internationalSupport: 3 }, medium: { industryLevel: 3, tradeBalance: 2 }, long: { industryLevel: 4, tradeBalance: 4 } },
+      { label: 'الموافقة بشروط وحوافز محدودة', advisor: 'المستشار الاقتصادي: أكثر توازناً في الإيرادات المتوقعة.',
+        immediate: {}, medium: { industryLevel: 1, tradeBalance: 1 }, long: { industryLevel: 2 } },
+      { label: 'رفض المشروع حفاظاً على السيطرة الوطنية الكاملة', advisor: 'المستشار السياسي: يحمي السيادة لكنه يفوّت استثمارات كبرى.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+
+  // ------- سياسية ومؤسسية -------
+  {
+    id: 'coalition_government', category: 'political', type: 'strategic', title: 'تشكيل حكومة ائتلافية',
+    description: 'تتصاعد الدعوات لتوسيع قاعدة الحكومة بضم ممثلين عن تيارات ومناطق مختلفة لتعزيز الشرعية الداخلية.',
+    minMonth: 5, oneTime: true,
+    options: [
+      { label: 'تشكيل حكومة ائتلاف وطني واسعة', advisor: 'المستشار السياسي: يعزز الشرعية لكنه يبطئ اتخاذ القرار.',
+        immediate: { politicalStability: 5, satisfaction: 2 }, medium: { politicalStability: 3 }, long: {} },
+      { label: 'ضم عدد محدود من الوزراء المستقلين', advisor: 'المستشار السياسي: خطوة رمزية متوسطة الأثر.',
+        immediate: { politicalStability: 2 }, medium: {}, long: {} },
+      { label: 'الإبقاء على حكومة متجانسة سياسياً', advisor: 'المستشار السياسي: قرار أسرع تنفيذاً لكنه أقل تمثيلاً.',
+        immediate: { politicalStability: -2 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'judicial_reform', category: 'political', type: 'strategic', title: 'إصلاح النظام القضائي',
+    description: 'يعاني القضاء من بطء التقاضي وضعف الاستقلالية، ما يؤثر على الثقة العامة ومناخ الاستثمار.',
+    minMonth: 9, oneTime: true,
+    options: [
+      { label: 'إصلاح شامل يعزز استقلال القضاء', advisor: 'المستشار السياسي: يحسن الشرعية والاستثمار على المدى الطويل.',
+        immediate: { budgetBalance: -2, politicalStability: 3 }, medium: { internationalSupport: 3 }, long: { economicDevelopment: 3 } },
+      { label: 'إصلاحات جزئية لتسريع التقاضي فقط', advisor: 'المستشار السياسي: تحسن محدود لكنه أسرع تنفيذاً.',
+        immediate: { budgetBalance: -1 }, medium: { satisfaction: 1 }, long: {} },
+      { label: 'تأجيل الإصلاح القضائي', advisor: 'المستشار السياسي: يتجنب صداماً مع النخب القضائية الحالية.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'decentralization', category: 'political', type: 'strategic', title: 'اللامركزية الإدارية',
+    description: 'تطالب مناطق عديدة، خصوصاً في الشرق والجنوب، بصلاحيات إدارية ومالية أوسع بدل المركزية الكاملة من طرابلس.',
+    minMonth: 10, oneTime: true,
+    options: [
+      { label: 'منح صلاحيات إدارية ومالية واسعة للمناطق', advisor: 'المستشار السياسي: يرضي المطالب الإقليمية لكنه يضعف المركز.',
+        immediate: { politicalStability: 4, satisfaction: 3 }, medium: {}, long: { politicalStability: -2 } },
+      { label: 'لامركزية إدارية محدودة مع إبقاء المالية مركزية', advisor: 'المستشار السياسي: حل وسط مدروس.',
+        immediate: { politicalStability: 2 }, medium: {}, long: {} },
+      { label: 'الإبقاء على المركزية الكاملة', advisor: 'المستشار السياسي: يحافظ على السيطرة لكنه يغذي الاستياء الإقليمي.',
+        immediate: { politicalStability: -3 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'digital_economy', category: 'economic', type: 'tactical', title: 'الاستثمار في الاقتصاد الرقمي',
+    description: 'يقترح مستشاروك دفع التحول الرقمي للخدمات الحكومية والتجارة الإلكترونية كرافعة اقتصادية جديدة.',
+    minMonth: 16, cooldown: 16,
+    options: [
+      { label: 'إطلاق استراتيجية تحول رقمي شاملة', advisor: 'مستشار البنية التحتية: استثمار عصري بعائد متوسط المدى.',
+        immediate: { budgetBalance: -3 }, medium: { industryLevel: 2, infrastructureLevel: 2 }, long: { economicDevelopment: 3 } },
+      { label: 'رقمنة خدمة حكومية واحدة كتجربة أولى', advisor: 'مستشار البنية التحتية: خطوة صغيرة منخفضة المخاطر.',
+        immediate: { budgetBalance: -1 }, medium: { infrastructureLevel: 1 }, long: {} },
+      { label: 'تأجيل التحول الرقمي', advisor: 'مستشار البنية التحتية: يوفر المال لكنه يبقي الخدمات بطيئة.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'disaster_preparedness', category: 'social', type: 'tactical', title: 'صندوق التأهب للكوارث',
+    description: 'يقترح مستشاروك إنشاء صندوق طوارئ دائم للاستجابة السريعة للكوارث الطبيعية بدل الارتجال في كل أزمة.',
+    minMonth: 7, oneTime: true,
+    options: [
+      { label: 'إنشاء صندوق طوارئ دائم بتمويل سنوي ثابت', advisor: 'مستشار الصحة: استعداد أفضل للأزمات المستقبلية.',
+        immediate: { budgetBalance: -2 }, medium: {}, long: { satisfaction: 2 } },
+      { label: 'الاعتماد على التمويل الطارئ عند الحاجة فقط', advisor: 'وزير المالية: يوفر المال لكنه يبطئ الاستجابة.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'cultural_heritage', category: 'social', type: 'tactical', title: 'دعم الإنتاج الثقافي والإعلامي',
+    description: 'يقترح مستشار الثقافة دعم صناعة الأفلام والدراما والفنون الليبية لتعزيز الهوية الوطنية والسياحة الثقافية.',
+    minMonth: 18, cooldown: 16,
+    options: [
+      { label: 'صندوق دعم حكومي للإنتاج الثقافي', advisor: 'مستشار الثقافة: يعزز الهوية الوطنية والسياحة الثقافية.',
+        immediate: { budgetBalance: -2, satisfaction: 2 }, medium: { tourismLevel: 1 }, long: {} },
+      { label: 'دعم رمزي محدود فقط', advisor: 'مستشار الثقافة: أثر محدود.',
+        immediate: { satisfaction: 1 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'election_call', category: 'political', type: 'strategic', title: 'الدعوة لانتخابات برلمانية منتصف المدة',
+    description: 'حان موعد استحقاق دستوري لتجديد الشرعية عبر صناديق الاقتراع في منتصف فترتك الرئاسية.',
+    minMonth: 20, oneTime: true,
+    forcedByMonth: 22,
+    options: [
+      { label: 'إجراء الانتخابات في موعدها بشفافية كاملة', advisor: 'المستشار السياسي: يعزز الشرعية الداخلية والدولية بشكل كبير.',
+        immediate: { politicalStability: -3 }, medium: { politicalStability: 10, internationalSupport: 5 }, long: {} },
+      { label: 'تأجيل الانتخابات بذريعة الظروف الأمنية', advisor: 'المستشار الأمني: يتجنب مخاطرة قصيرة المدى بثمن شرعية طويلة المدى.',
+        immediate: { internationalSupport: -6, politicalStability: -2 }, medium: { politicalStability: -3 }, long: {} },
+      { label: 'إجراء انتخابات جزئية في مناطق مستقرة فقط', advisor: 'المستشار السياسي: حل وسط غير مقنع لكل الأطراف.',
+        immediate: { politicalStability: 2, internationalSupport: -1 }, medium: {}, long: {} }
+    ]
   }
 ];

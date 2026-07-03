@@ -65,7 +65,8 @@ function renderHUD() {
 
 const INDICATOR_KEYS = ['satisfaction', 'budgetBalance', 'treasury', 'gdpGrowth', 'unemployment', 'inflation',
   'publicDebt', 'forexReserves', 'poverty', 'politicalStability', 'internationalSupport',
-  'oilProduction', 'educationLevel', 'healthLevel', 'infrastructureLevel', 'security', 'economicDevelopment'];
+  'oilProduction', 'educationLevel', 'healthLevel', 'infrastructureLevel', 'security', 'economicDevelopment',
+  'agricultureLevel', 'tourismLevel', 'industryLevel', 'tradeBalance'];
 
 function renderIndicatorCards() {
   const s = Game.state;
@@ -396,12 +397,20 @@ function renderEndScreen(result) {
     p.textContent = `${meta.name}: ${fmtNum(s.indicators[key])} ${meta.unit}`;
     indWrap.appendChild(p);
   });
+  const achievementsHtml = s.achievements.length
+    ? `<div class="achievements-row">${s.achievements.map(id => {
+        const a = ACHIEVEMENTS.find(x => x.id === id);
+        return a ? `<span class="achievement-badge" title="${a.desc}">🏆 ${a.name}</span>` : '';
+      }).join('')}</div>`
+    : '<p class="hint">لم تحقق أي إنجازات خاصة في هذه الفترة الرئاسية.</p>';
   const sumWrap = document.getElementById('end-summary');
   sumWrap.innerHTML = `
     <p>المدة التي حكمت فيها: ${s.month - 1} شهراً</p>
     <p>عدد القرارات المتخذة: ${s.decisionsLog.length}</p>
     <p>عدد الأحداث التي واجهتها: ${s.eventsLog.length}</p>
-    <p>الدرجة النهائية: ${computeFinalScore(s)} / 100</p>`;
+    <p>الدرجة النهائية: ${computeFinalScore(s)} / 100</p>
+    <h4 style="margin-top:14px">الإنجازات</h4>
+    ${achievementsHtml}`;
   showScreen('screen-end');
 }
 
@@ -506,6 +515,16 @@ function renderEventModal(event, onChoose) {
       onChoose(idx);
     });
   });
+}
+
+function renderAchievementModal(achievement, onClose) {
+  const html = `
+    <span class="modal-tag">إنجاز جديد 🏆</span>
+    <h2>${achievement.name}</h2>
+    <p class="modal-desc">${achievement.desc}</p>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">رائع!</button></div>`;
+  showModal(html);
+  document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
 }
 
 function renderYearStartModal(onContinue) {

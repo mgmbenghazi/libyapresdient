@@ -185,12 +185,19 @@ function processQueue() {
     applyCabinetMonthlyEffects(s);
     s.history.push(snapshotIndicators(s));
     if (s.history.length > 60) s.history.shift();
+    const unlocked = checkAchievements(s);
+    unlocked.forEach(a => Game.queue.unshift({ type: 'achievement', payload: a }));
     processQueue();
     return;
   }
 
   if (step.type === 'report') {
     renderReportModal(lastTickSummary, () => processQueue());
+    return;
+  }
+
+  if (step.type === 'achievement') {
+    renderAchievementModal(step.payload, () => processQueue());
     return;
   }
 

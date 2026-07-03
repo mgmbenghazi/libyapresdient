@@ -269,6 +269,9 @@ input[type="text"] {
 .delta-neg { color: var(--bad); }
 
 /* ------- شاشة النهاية ------- */
+.achievements-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.achievement-badge { background: linear-gradient(135deg, var(--gold), #8a6a10); color: #201a05; font-weight: 700; font-size: .8rem; padding: 6px 14px; border-radius: 20px; }
+
 .end-panel { text-align: center; }
 .end-panel h2 { font-size: 2rem; color: var(--gold); }
 .end-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; text-align: right; margin-top: 20px; }

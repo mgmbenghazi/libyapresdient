@@ -7,9 +7,14 @@ function getAvailableDecisions(state, count) {
     if (d.condition && !d.condition(state)) return false;
     return true;
   });
-  // ترتيب عشوائي واختيار العدد المطلوب
-  const shuffled = available.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+
+  // القرارات "الإجبارية" (مثل الانتخابات) يجب أن تظهر حتماً عند بلوغ شهرها المحدد
+  const forced = available.filter(d => d.forcedByMonth && state.month >= d.forcedByMonth);
+  const rest = available.filter(d => !forced.includes(d));
+  const shuffledRest = rest.sort(() => Math.random() - 0.5);
+
+  const result = [...forced, ...shuffledRest].slice(0, Math.max(count, forced.length));
+  return result;
 }
 
 function applyDecisionOption(state, decision, optionIndex) {

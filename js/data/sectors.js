@@ -34,8 +34,26 @@ const INDICATOR_META = {
   healthLevel: { name: 'مستوى الصحة', unit: '%', min: 0, max: 100, good: 'high' },
   infrastructureLevel: { name: 'البنية التحتية', unit: '%', min: 0, max: 100, good: 'high' },
   security: { name: 'الأمن', unit: '%', min: 0, max: 100, good: 'high' },
-  economicDevelopment: { name: 'التنمية الاقتصادية', unit: '%', min: 0, max: 100, good: 'high' }
+  economicDevelopment: { name: 'التنمية الاقتصادية', unit: '%', min: 0, max: 100, good: 'high' },
+  agricultureLevel: { name: 'القطاع الزراعي', unit: '%', min: 0, max: 100, good: 'high' },
+  tourismLevel: { name: 'القطاع السياحي', unit: '%', min: 0, max: 100, good: 'high' },
+  industryLevel: { name: 'القطاع الصناعي', unit: '%', min: 0, max: 100, good: 'high' },
+  tradeBalance: { name: 'الميزان التجاري', unit: '% من الناتج', min: -50, max: 50, good: 'high' }
 };
+
+// إنجازات اللعبة
+const ACHIEVEMENTS = [
+  { id: 'debt_free', name: 'اقتصاد بلا ديون', desc: 'خفضت الدين العام إلى أقل من 10% من الناتج.', check: s => s.indicators.publicDebt < 10 },
+  { id: 'full_employment', name: 'التشغيل الكامل', desc: 'خفضت البطالة إلى أقل من 8%.', check: s => s.indicators.unemployment < 8 },
+  { id: 'beloved_leader', name: 'الزعيم المحبوب', desc: 'حافظت على رضا شعبي فوق 80%.', check: s => s.indicators.satisfaction > 80 },
+  { id: 'diversified_economy', name: 'اقتصاد متنوع', desc: 'رفعت الزراعة والسياحة والصناعة جميعها فوق 60%.', check: s => s.indicators.agricultureLevel > 60 && s.indicators.tourismLevel > 60 && s.indicators.industryLevel > 60 },
+  { id: 'oil_giant', name: 'عملاق النفط', desc: 'رفعت إنتاج النفط فوق 1800 ألف برميل/يوم.', check: s => s.indicators.oilProduction > 1800 },
+  { id: 'diplomatic_master', name: 'سيد الدبلوماسية', desc: 'حققت دعماً دولياً فوق 80%.', check: s => s.indicators.internationalSupport > 80 },
+  { id: 'iron_fist_security', name: 'قبضة أمنية', desc: 'حققت مستوى أمن فوق 90%.', check: s => s.indicators.security > 90 },
+  { id: 'poverty_eradicated', name: 'القضاء على الفقر', desc: 'خفضت مستوى الفقر إلى أقل من 5%.', check: s => s.indicators.poverty < 5 },
+  { id: 'trade_surplus', name: 'فائض تجاري', desc: 'حققت ميزاناً تجارياً موجباً فوق 10%.', check: s => s.indicators.tradeBalance > 10 },
+  { id: 'survivor', name: 'الناجي', desc: 'أكملت فترة رئاسية كاملة رغم كل الأزمات.', check: s => s.month >= 48 }
+];
 
 function clampIndicator(key, value) {
   const meta = INDICATOR_META[key];

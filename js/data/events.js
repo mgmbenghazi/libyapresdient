@@ -149,5 +149,87 @@ const EVENTS = [
       { label: 'دعم المبادرة حكومياً بالكامل', immediate: { budgetBalance: -2, satisfaction: 3, unemployment: -1 } },
       { label: 'دعم رمزي ومعنوي فقط', immediate: { satisfaction: 1 } }
     ]
+  },
+
+  // ------- قطاعات جديدة -------
+  {
+    id: 'tourism_boom', category: 'economic', title: 'إقبال سياحي غير متوقع', weight: 3, minMonth: 8,
+    description: 'شهدت المواقع الأثرية الليبية تغطية إعلامية دولية إيجابية أدت لإقبال سياحي مفاجئ.',
+    options: [
+      { label: 'استثمار سريع لتوسيع الطاقة الاستيعابية', immediate: { budgetBalance: -2, tourismLevel: 4 } },
+      { label: 'ترك السوق يتكيف تدريجياً دون تدخل', immediate: { tourismLevel: 2 } }
+    ]
+  },
+  {
+    id: 'industrial_accident', category: 'economic', title: 'حادث صناعي في منطقة صناعية', weight: 2, minMonth: 10,
+    description: 'وقع حادث سلامة في أحد المصانع أسفر عن إصابات وأثار تساؤلات حول معايير السلامة.',
+    options: [
+      { label: 'تحقيق فوري وتشديد معايير السلامة', immediate: { industryLevel: -1, satisfaction: 2, budgetBalance: -1 } },
+      { label: 'تعويض المتضررين دون تغيير الأنظمة', immediate: { satisfaction: -2, budgetBalance: -1 } }
+    ]
+  },
+  {
+    id: 'trade_dispute', category: 'international', title: 'نزاع تجاري مع دولة جوار', weight: 3, minMonth: 6,
+    description: 'أغلقت إحدى دول الجوار معبراً حدودياً مؤقتاً احتجاجاً على سياسات تجارية ليبية.',
+    options: [
+      { label: 'التفاوض الدبلوماسي السريع لإعادة فتح المعبر', immediate: { internationalSupport: 2, tradeBalance: 1 } },
+      { label: 'الرد بإجراءات مقابلة على الحدود', immediate: { internationalSupport: -4, tradeBalance: -3 } }
+    ]
+  },
+  {
+    id: 'agricultural_pest', category: 'natural', title: 'انتشار آفة زراعية', weight: 2, minMonth: 5,
+    description: 'انتشرت آفة زراعية في مناطق زراعية رئيسية مهددة بموسم الحصاد.',
+    options: [
+      { label: 'حملة مكافحة عاجلة بدعم حكومي', immediate: { budgetBalance: -2, agricultureLevel: 1 } },
+      { label: 'ترك المزارعين يتعاملون مع الأزمة بأنفسهم', immediate: { agricultureLevel: -4, satisfaction: -2 } }
+    ]
+  },
+  {
+    id: 'mineral_discovery', category: 'economic', title: 'اكتشاف احتياطي معدني واعد', weight: 2, minMonth: 10,
+    description: 'كشفت مسوحات جيولوجية عن احتياطي واعد من المعادن في منطقة نائية.',
+    options: [
+      { label: 'الإسراع في منح تراخيص استكشاف', immediate: { industryLevel: 2, internationalSupport: 1 } },
+      { label: 'دراسة الجدوى البيئية أولاً', immediate: { industryLevel: 1 } }
+    ]
+  },
+  {
+    id: 'remittance_surge', category: 'economic', title: 'ارتفاع تحويلات المغتربين', weight: 3, minMonth: 4,
+    description: 'سجلت تحويلات الليبيين المغتربين ارتفاعاً ملحوظاً هذا الموسم.',
+    options: [
+      { label: 'تسهيل قنوات التحويل الرسمية', immediate: { forexReserves: 3000, tradeBalance: 1 } },
+      { label: 'عدم اتخاذ إجراء خاص', immediate: { forexReserves: 1200 } }
+    ]
+  },
+  {
+    id: 'corruption_scandal', category: 'political', title: 'فضيحة فساد في صفقة حكومية', weight: 3, minMonth: 6,
+    description: 'كشف تحقيق صحفي عن شبهات فساد في إحدى الصفقات الحكومية الكبرى.',
+    options: [
+      { label: 'فتح تحقيق علني ومحاسبة المتورطين', immediate: { satisfaction: 3, politicalStability: -2 } },
+      { label: 'التعامل مع الملف بهدوء دون ضجة إعلامية', immediate: { satisfaction: -5, internationalSupport: -2 } }
+    ]
+  },
+  {
+    id: 'cyber_attack', category: 'security', title: 'هجوم إلكتروني على بنية تحتية حكومية', weight: 2, minMonth: 16,
+    description: 'تعرضت أنظمة حكومية رقمية لهجوم إلكتروني أدى لتعطل مؤقت في بعض الخدمات.',
+    options: [
+      { label: 'استثمار عاجل في الأمن السيبراني', immediate: { budgetBalance: -2, infrastructureLevel: 1, security: 2 } },
+      { label: 'إصلاح الأضرار دون استثمار إضافي', immediate: { infrastructureLevel: -2 } }
+    ]
+  },
+  {
+    id: 'cultural_festival_success', category: 'social', title: 'نجاح مهرجان ثقافي وطني', weight: 3, minMonth: 12,
+    description: 'حقق مهرجان ثقافي وطني نجاحاً لافتاً وتفاعلاً إعلامياً إيجابياً واسعاً.',
+    options: [
+      { label: 'توسيع المهرجان ليصبح حدثاً سنوياً دولياً', immediate: { tourismLevel: 2, satisfaction: 2, internationalSupport: 1 } },
+      { label: 'الاكتفاء بالنجاح الحالي دون توسع', immediate: { satisfaction: 1 } }
+    ]
+  },
+  {
+    id: 'diaspora_conference', category: 'international', title: 'مؤتمر الليبيين المغتربين', weight: 2, minMonth: 14,
+    description: 'يقترح مستشاروك تنظيم مؤتمر دولي لجذب استثمارات وخبرات الليبيين المقيمين بالخارج.',
+    options: [
+      { label: 'تنظيم مؤتمر كبير بدعوة استثمارية مباشرة', immediate: { budgetBalance: -1, forexReserves: 2500, internationalSupport: 2 } },
+      { label: 'الاكتفاء بمبادرات تواصل رقمية محدودة', immediate: { internationalSupport: 1 } }
+    ]
   }
 ];

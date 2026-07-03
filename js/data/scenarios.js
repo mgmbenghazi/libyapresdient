@@ -10,7 +10,8 @@ const SCENARIOS = [
       unemployment: 19, inflation: 6, forexReserves: 70000, publicDebt: 35,
       poverty: 24, politicalStability: 60, internationalSupport: 55,
       oilProduction: 1100, educationLevel: 52, healthLevel: 50,
-      infrastructureLevel: 48, security: 62, economicDevelopment: 45
+      infrastructureLevel: 48, security: 62, economicDevelopment: 45,
+      agricultureLevel: 40, tourismLevel: 30, industryLevel: 35, tradeBalance: -8
     },
     startTreasuryNote: 'خزينة الدولة في وضع مقبول مع عجز طفيف قابل للإدارة.'
   },
@@ -24,7 +25,8 @@ const SCENARIOS = [
       unemployment: 28, inflation: 14, forexReserves: 35000, publicDebt: 55,
       poverty: 38, politicalStability: 32, internationalSupport: 40,
       oilProduction: 650, educationLevel: 40, healthLevel: 38,
-      infrastructureLevel: 30, security: 35, economicDevelopment: 28
+      infrastructureLevel: 30, security: 35, economicDevelopment: 28,
+      agricultureLevel: 25, tourismLevel: 15, industryLevel: 20, tradeBalance: -20
     },
     startTreasuryNote: 'خزينة شبه فارغة وعجز كبير في الميزانية.'
   },
@@ -38,7 +40,8 @@ const SCENARIOS = [
       unemployment: 15, inflation: 5, forexReserves: 140000, publicDebt: 18,
       poverty: 16, politicalStability: 65, internationalSupport: 58,
       oilProduction: 1500, educationLevel: 55, healthLevel: 55,
-      infrastructureLevel: 52, security: 60, economicDevelopment: 55
+      infrastructureLevel: 52, security: 60, economicDevelopment: 55,
+      agricultureLevel: 45, tourismLevel: 38, industryLevel: 42, tradeBalance: 15
     },
     startTreasuryNote: 'فائض مالي مريح بفضل ارتفاع عائدات النفط.'
   },
@@ -52,7 +55,8 @@ const SCENARIOS = [
       unemployment: 24, inflation: 8, forexReserves: 50000, publicDebt: 42,
       poverty: 27, politicalStability: 50, internationalSupport: 50,
       oilProduction: 900, educationLevel: 58, healthLevel: 54,
-      infrastructureLevel: 50, security: 55, economicDevelopment: 40
+      infrastructureLevel: 50, security: 55, economicDevelopment: 40,
+      agricultureLevel: 42, tourismLevel: 35, industryLevel: 38, tradeBalance: -5
     },
     startTreasuryNote: 'الاعتماد على النفط وحده لم يعد خياراً آمناً للمستقبل.'
   }

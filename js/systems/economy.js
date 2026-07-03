@@ -12,8 +12,9 @@ function monthlyEconomicTick(state) {
 
   // 2) إيرادات النفط (مليون د.ل شهرياً) بناءً على الإنتاج (ألف برميل/يوم) والسعر
   const oilRevenue = ind.oilProduction * 30 * oilPriceFactor * 0.9;
-  // 3) إيرادات ضريبية بناءً على التنمية الاقتصادية والنشاط الاقتصادي
-  const taxRevenue = (ind.economicDevelopment * 25) * (1 - ind.unemployment / 150);
+  // 3) إيرادات ضريبية بناءً على التنمية الاقتصادية والنشاط الاقتصادي والقطاعات غير النفطية
+  const nonOilBoost = 1 + ((ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3) / 200;
+  const taxRevenue = (ind.economicDevelopment * 25) * (1 - ind.unemployment / 150) * nonOilBoost;
   const totalRevenue = oilRevenue + taxRevenue;
 
   // 4) الإنفاق يعتمد على توزيع الميزانية كنسب من إجمالي إنفاق مستهدف
@@ -83,6 +84,14 @@ function monthlyEconomicTick(state) {
   // 11) الأمن يتراجع قليلاً بشكل طبيعي دون صيانة (entropy)
   ind.security = clampIndicator('security', ind.security - 0.15);
   ind.infrastructureLevel = clampIndicator('infrastructureLevel', ind.infrastructureLevel - 0.1);
+
+  // 12) القطاعات غير النفطية (زراعة/سياحة/صناعة) وميزان التجارة
+  ind.agricultureLevel = clampIndicator('agricultureLevel', ind.agricultureLevel + (ind.infrastructureLevel - 50) / 500 - 0.1);
+  ind.tourismLevel = clampIndicator('tourismLevel', ind.tourismLevel + (ind.security - 50) / 400 - 0.1);
+  ind.industryLevel = clampIndicator('industryLevel', ind.industryLevel + (ind.economicDevelopment - 50) / 500 - 0.1);
+  const nonOilDiversification = (ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3;
+  ind.economicDevelopment = clampIndicator('economicDevelopment', ind.economicDevelopment + (nonOilDiversification - 50) / 800);
+  ind.tradeBalance = clampIndicator('tradeBalance', ind.tradeBalance * 0.9 + ((oilPriceFactor - 1) * 15 + (nonOilDiversification - 40) / 4) * 0.1 + rnd(-0.5, 0.5));
 
   return { oilRevenue, taxRevenue, totalRevenue, totalExpenditure, monthlyBalance };
 }
