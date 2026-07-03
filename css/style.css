@@ -288,6 +288,7 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 }
 .metric-row:hover { background: var(--panel-2); }
 .metric-name { font-size: .78rem; color: var(--text-dim); }
+.metric-ownership-badge { font-size: .7rem; margin-inline-start: 5px; opacity: .8; cursor: help; }
 .metric-value { font-size: .92rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; text-align: left; }
 .metric-delta { font-size: .68rem; font-variant-numeric: tabular-nums; text-align: left; min-width: 38px; }
 .metric-delta.up { color: var(--good); }
@@ -367,6 +368,42 @@ canvas.spark { display: block; }
 
 .chart-legend { display: flex; align-items: center; font-size: .78rem; color: var(--text-dim); margin-bottom: 6px; }
 .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 5px; }
+
+/* ------- تبويب الاقتصاد: تبويبات فرعية (الميزانية / القطاعات الإنتاجية) ------- */
+.subtab-row { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--hairline); padding-bottom: 12px; }
+.subtab-btn { background: transparent; color: var(--text-dim); padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: .84rem; border: 1px solid var(--hairline-soft); }
+.subtab-btn.active { background: rgba(201,162,39,.12); border-color: var(--gold); color: var(--gold-bright); }
+.subtab-panel { display: none; }
+.subtab-panel.active { display: block; animation: screenEnter .35s ease; }
+
+/* ------- بطاقات القطاعات الإنتاجية ------- */
+.sector-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.sector-ctrl-card { border: 1px solid var(--hairline); border-radius: 14px; background: var(--panel); padding: 16px; transition: border-color .15s ease; }
+.sector-ctrl-card:hover { border-color: var(--gold); }
+.sc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sc-head-left { display: flex; align-items: center; gap: 8px; }
+.sc-icon { font-size: 1.15rem; }
+.sc-name { font-weight: 700; font-size: .95rem; color: var(--text); }
+.sc-value { font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--gold); }
+.sc-spark { width: 100%; height: 34px; display: block; margin-bottom: 10px; }
+
+.sc-lever { margin-bottom: 14px; }
+.sc-lever-label { display: flex; justify-content: space-between; font-size: .8rem; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
+.sc-lever-val { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.sc-slider { width: 100%; accent-color: var(--ly-green); }
+.sc-orient-labels { display: flex; justify-content: space-between; font-size: .68rem; color: var(--text-faint); margin-top: 4px; }
+
+.seg-control { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-btn { flex: 1; min-width: 90px; background: var(--panel-2); color: var(--text-faint); border: 1px solid var(--hairline-soft); padding: 6px 8px; border-radius: 8px; font-size: .72rem; font-weight: 600; cursor: pointer; transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.seg-btn.active { background: var(--good-glow); border-color: var(--good); color: var(--good); }
+
+.sc-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--hairline-soft); border-radius: 10px; overflow: hidden; margin-top: 4px; }
+.sc-preview-item { background: var(--panel-2); padding: 10px 12px; }
+.sc-preview-label { display: block; font-size: .7rem; color: var(--text-faint); margin-bottom: 4px; }
+.sc-preview-value { font-size: .92rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.sc-preview-value.good { color: var(--good); }
+.sc-preview-value.medium { color: var(--medium); }
+.sc-preview-value.bad { color: var(--bad); }
 .legend-dot.legend-good { background: var(--good); }
 .legend-dot.legend-bad { background: var(--bad); }
 

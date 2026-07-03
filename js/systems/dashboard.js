@@ -25,6 +25,14 @@ function getGovernanceVerdict(score) {
   return { label: 'في خطر حقيقي', status: 'bad' };
 }
 
+// أي قطاع إنتاجي يُنمّي أي إقليم أكثر - الزراعة تُنمّي الجنوب (واحات فزان)، النفط الشرق (الهلال النفطي)،
+// السياحة والصناعة الغرب (طرابلس ومصراتة) أكثر من غيرها. يُستخدم في طبقة "التنمية" بالخريطة التفاعلية
+const REGION_SECTOR_WEIGHTS = {
+  west: { oil: 0.9, agriculture: 0.6, tourism: 1.0, industry: 1.1 },
+  east: { oil: 1.2, agriculture: 0.5, tourism: 0.9, industry: 0.7 },
+  south: { oil: 0.5, agriculture: 1.3, tourism: 0.6, industry: 0.3 }
+};
+
 // قيمة "الطبقة" المعروضة على الخريطة لكل منطقة - الولاء مُقاس مباشرة، والأمن/التنمية تقديريان
 // (لا تتبع اللعبة بيانات أمن/تنمية منفصلة لكل منطقة، فتُشتق من المؤشر الوطني مع تفاوت إقليمي معقول)
 function regionLayerValue(state, regionId, layer) {
@@ -34,7 +42,13 @@ function regionLayerValue(state, regionId, layer) {
     return Math.max(0, Math.min(100, state.indicators.security * 0.65 + loyalty * 0.35));
   }
   if (layer === 'development') {
-    const base = (state.indicators.infrastructureLevel + state.indicators.economicDevelopment) / 2;
+    const w = REGION_SECTOR_WEIGHTS[regionId] || { oil: 1, agriculture: 1, tourism: 1, industry: 1 };
+    const oilScore = normalizedIndicatorScore('oilProduction', state.indicators.oilProduction);
+    const sectorMix = (
+      oilScore * w.oil + state.indicators.agricultureLevel * w.agriculture +
+      state.indicators.tourismLevel * w.tourism + state.indicators.industryLevel * w.industry
+    ) / (w.oil + w.agriculture + w.tourism + w.industry);
+    const base = ((state.indicators.infrastructureLevel + state.indicators.economicDevelopment) / 2) * 0.5 + sectorMix * 0.5;
     return Math.max(0, Math.min(100, base * (region.developmentWeight || 1)));
   }
   return loyalty; // 'loyalty' الافتراضي

@@ -76,7 +76,7 @@
     </div>
     <nav class="tabbar">
       <button class="tab-btn active" data-tab="dashboard">لوحة المؤشرات</button>
-      <button class="tab-btn" data-tab="budget">الميزانية</button>
+      <button class="tab-btn" data-tab="economy">الاقتصاد</button>
       <button class="tab-btn" data-tab="characters">الحكومة والشخصيات</button>
       <button class="tab-btn" data-tab="relations">العلاقات</button>
       <button class="tab-btn" data-tab="log">السجل</button>
@@ -118,12 +118,12 @@
         <div class="status-block">
           <div class="icon-row">
             <div class="icon-chip" id="cmd-alerts-icon" title="التنبيهات النشطة">🔔<span class="badge-count" id="cmd-alerts-count"></span></div>
-            <div class="icon-chip" data-goto-tab="budget" title="الميزانية">💰</div>
+            <div class="icon-chip" data-goto-tab="economy" title="الاقتصاد">💰</div>
             <div class="icon-chip" data-goto-tab="characters" title="الحكومة والشخصيات">🗂️</div>
             <div class="icon-chip" data-goto-tab="relations" title="العلاقات">🌍</div>
           </div>
           <div class="quicknav">
-            <span data-goto-tab="budget">الميزانية</span><span data-goto-tab="characters">الحكومة</span><span data-goto-tab="relations">العلاقات</span>
+            <span data-goto-tab="economy">الاقتصاد</span><span data-goto-tab="characters">الحكومة</span><span data-goto-tab="relations">العلاقات</span>
           </div>
         </div>
       </div>
@@ -170,27 +170,40 @@
       <div class="activity-ticker" id="activity-ticker"></div>
     </div>
 
-    <!-- تبويب الميزانية -->
-    <div id="tab-budget" class="tab-panel">
-      <h3>الميزانية العامة</h3>
-      <p class="hint">كل شريحة تمثل نسبة مئوية من إيرادات الدولة المتوقعة تُخصَّص لهذا القطاع مباشرة. مجموع 100% يعني ميزانية متوازنة تماماً (الإنفاق = الإيراد)، وما دون ذلك فائض وما فوقه عجز حقيقي - التعديل ينعكس فوراً في المعاينة أدناه وفعلياً في نهاية الشهر.</p>
-
-      <div id="budget-live-summary" class="budget-live"></div>
-
-      <div class="preset-row">
-        <span class="preset-label">توزيع سريع:</span>
-        <button class="btn btn-small" id="preset-balanced">متوازنة (100%)</button>
-        <button class="btn btn-small" id="preset-austerity">تقشف (85%)</button>
-        <button class="btn btn-small" id="preset-expansion">توسعية (115%)</button>
+    <!-- تبويب الاقتصاد: الميزانية العامة + القطاعات الإنتاجية كتبويبين فرعيين تحت مظلة واحدة -->
+    <div id="tab-economy" class="tab-panel">
+      <div class="subtab-row">
+        <button class="subtab-btn active" data-subtab="budget-general">الميزانية العامة</button>
+        <button class="subtab-btn" data-subtab="sectors">القطاعات الإنتاجية</button>
       </div>
 
-      <div id="budget-sliders"></div>
-      <div id="budget-summary" class="budget-summary"></div>
+      <div id="subtab-budget-general" class="subtab-panel active">
+        <h3>الميزانية العامة</h3>
+        <p class="hint">كل شريحة تمثل نسبة مئوية من إيرادات الدولة المتوقعة تُخصَّص لهذا القطاع مباشرة، بما فيها أسطر استثمار القطاعات الإنتاجية القابلة للضبط من التبويب الفرعي المجاور. مجموع 100% يعني ميزانية متوازنة تماماً (الإنفاق = الإيراد)، وما دون ذلك فائض وما فوقه عجز حقيقي - التعديل ينعكس فوراً في المعاينة أدناه وفعلياً في نهاية الشهر.</p>
 
-      <h3 style="margin-top:24px">الإيرادات والنفقات عبر الزمن</h3>
-      <div class="chart-box" style="max-width:640px">
-        <div class="chart-legend"><span class="legend-dot legend-good"></span> الإيرادات <span class="legend-dot legend-bad" style="margin-inline-start:14px"></span> النفقات</div>
-        <canvas id="chart-revenue-expenditure"></canvas>
+        <div id="budget-live-summary" class="budget-live"></div>
+
+        <div class="preset-row">
+          <span class="preset-label">توزيع سريع:</span>
+          <button class="btn btn-small" id="preset-balanced">متوازنة (100%)</button>
+          <button class="btn btn-small" id="preset-austerity">تقشف (85%)</button>
+          <button class="btn btn-small" id="preset-expansion">توسعية (115%)</button>
+        </div>
+
+        <div id="budget-sliders"></div>
+        <div id="budget-summary" class="budget-summary"></div>
+
+        <h3 style="margin-top:24px">الإيرادات والنفقات عبر الزمن</h3>
+        <div class="chart-box" style="max-width:640px">
+          <div class="chart-legend"><span class="legend-dot legend-good"></span> الإيرادات <span class="legend-dot legend-bad" style="margin-inline-start:14px"></span> النفقات</div>
+          <canvas id="chart-revenue-expenditure"></canvas>
+        </div>
+      </div>
+
+      <div id="subtab-sectors" class="subtab-panel">
+        <h3>القطاعات الإنتاجية</h3>
+        <p class="hint">لكل قطاع ثلاثة أذرع تحكم دائمة: استثمار (سطر ميزانية حقيقي يُضبط من هنا أو من تبويب الميزانية)، نموذج ملكية يحدد من يملكه فعلياً وحصة الدولة من عوائده، وتوجّه إنتاج بين السوق المحلي والتصدير. المعاينة أسفل كل بطاقة حية ومبنية على نفس محرك اللعبة.</p>
+        <div id="sector-cards" class="sector-cards-grid"></div>
       </div>
     </div>
 

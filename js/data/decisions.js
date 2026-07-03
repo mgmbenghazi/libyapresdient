@@ -94,17 +94,21 @@ const DECISIONS = [
   },
   {
     id: 'oil_investment', category: 'economic', type: 'strategic', title: 'تطوير قطاع النفط',
-    description: 'تحتاج حقول النفط استثمارات لرفع الإنتاج والحفاظ على الإيرادات الرئيسية للدولة.',
+    description: 'تحتاج حقول النفط استثمارات لرفع الإنتاج والحفاظ على الإيرادات الرئيسية للدولة. اختيارك هنا يضبط سياسة القطاع بشكل دائم من تبويب "الاقتصاد ← القطاعات الإنتاجية"، لا أثراً لمرة واحدة فقط.',
     minMonth: 1, cooldown: 18,
     options: [
-      { label: 'استثمار حكومي مباشر في الحقول', advisor: 'وزير النفط: يبقي العوائد للدولة لكنه يستنزف الخزينة.',
-        immediate: { budgetBalance: -8, treasury: -4000 }, medium: { oilProduction: 100 }, long: { oilProduction: 150, budgetBalance: 5 } },
-      { label: 'جذب شركات نفط عالمية بعقود شراكة', advisor: 'وزير النفط: أسرع تنفيذاً لكن بحصة أقل من العوائد.',
-        immediate: { internationalSupport: 3 }, medium: { oilProduction: 120 }, long: { oilProduction: 100, budgetBalance: 3 } },
+      { label: 'استثمار حكومي مباشر في الحقول', advisor: 'وزير النفط: يبقي العوائد كاملة للدولة لكن نمواً أبطأ وأكثر بيروقراطية.',
+        immediate: { budgetBalance: -3, treasury: -1500 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'oil', ownership: 'state', investDelta: 6 } },
+      { label: 'جذب شركات نفط عالمية بعقود شراكة', advisor: 'وزير النفط: نمو أسرع وخبرة أجنبية، لكن بحصة أقل من العوائد.',
+        immediate: { internationalSupport: 3 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'oil', ownership: 'partnership', investDelta: 4 } },
       { label: 'شراكة بين القطاعين العام والخاص', advisor: 'وزير النفط: توازن جيد بين المخاطرة والعائد.',
-        immediate: { budgetBalance: -3 }, medium: { oilProduction: 80 }, long: { oilProduction: 100, budgetBalance: 4 } },
+        immediate: { budgetBalance: -1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'oil', ownership: 'partnership', investDelta: 2 } },
       { label: 'التركيز أولاً على تطوير الكوادر المحلية', advisor: 'وزير النفط: استثمار بشري طويل الأمد يقلل الاعتماد على الأجانب.',
-        immediate: { budgetBalance: -2, educationLevel: 1 }, medium: { oilProduction: 30 }, long: { oilProduction: 60, economicDevelopment: 3 } }
+        immediate: { educationLevel: 2 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'oil', ownership: 'state', investDelta: 3 } }
     ]
   },
   {
@@ -254,15 +258,18 @@ const DECISIONS = [
   },
   {
     id: 'privatization', category: 'economic', type: 'strategic', title: 'برنامج الخصخصة',
-    description: 'يقترح مستشاروك خصخصة بعض الشركات المملوكة للدولة لتحسين الكفاءة وتوفير إيرادات.',
+    description: 'يقترح مستشاروك خصخصة الشركات الصناعية المملوكة للدولة لتحسين الكفاءة وتوفير إيرادات فورية. القرار يضبط نموذج ملكية القطاع الصناعي بشكل دائم.',
     minMonth: 10, oneTime: true,
     options: [
-      { label: 'خصخصة واسعة لعدة قطاعات', advisor: 'المستشار الاقتصادي: عائد مالي كبير لكن مخاطر بطالة واحتجاجات.',
-        immediate: { treasury: 8000, satisfaction: -5, unemployment: 2 }, medium: { economicDevelopment: 4 }, long: { economicDevelopment: 3 } },
-      { label: 'خصخصة جزئية وتدريجية', advisor: 'المستشار الاقتصادي: أكثر توازناً.',
-        immediate: { treasury: 3000, satisfaction: -1 }, medium: { economicDevelopment: 2 }, long: {} },
+      { label: 'خصخصة واسعة لعدة قطاعات', advisor: 'المستشار الاقتصادي: عائد مالي كبير فوري لكن مخاطر بطالة واحتجاجات، وحصة أقل من عوائد الصناعة لاحقاً.',
+        immediate: { treasury: 8000, satisfaction: -5, unemployment: 2 }, medium: { economicDevelopment: 2 }, long: {},
+        sectorPolicyEffect: { sector: 'industry', ownership: 'privatized' } },
+      { label: 'خصخصة جزئية وتدريجية', advisor: 'المستشار الاقتصادي: أكثر توازناً - شراكة بدل بيع كامل.',
+        immediate: { treasury: 3000, satisfaction: -1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'industry', ownership: 'partnership' } },
       { label: 'الإبقاء على الملكية العامة الكاملة', advisor: 'المستشار السياسي: يحافظ على السلم الاجتماعي لكن يبقي الكفاءة منخفضة.',
-        immediate: {}, medium: {}, long: {} }
+        immediate: {}, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'industry', ownership: 'state' } }
     ]
   },
   {
@@ -282,28 +289,34 @@ const DECISIONS = [
   // ------- قطاعات جديدة: زراعة، سياحة، صناعة، تجارة -------
   {
     id: 'agriculture_investment', category: 'economic', type: 'tactical', title: 'الاستثمار في القطاع الزراعي',
-    description: 'تعاني الأراضي الزراعية في الجبل الأخضر وسهل الجفارة وواحات فزان من ضعف الاستثمار وشبكات الري القديمة.',
+    description: 'تعاني الأراضي الزراعية في الجبل الأخضر وسهل الجفارة وواحات فزان من ضعف الاستثمار وشبكات الري القديمة. القرار يرفع أو يخفض سطر استثمار القطاع بشكل دائم في الميزانية.',
     minMonth: 3, cooldown: 12,
     options: [
       { label: 'مشاريع استصلاح أراضٍ وري حديث واسعة', advisor: 'مستشار الزراعة: أثر كبير لكنه يحتاج تمويلاً ضخماً.',
-        immediate: { budgetBalance: -5 }, medium: { agricultureLevel: 6 }, long: { agricultureLevel: 5, poverty: -2 } },
+        immediate: { budgetBalance: -5, poverty: -1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'agriculture', investDelta: 7 } },
       { label: 'دعم المزارعين بالتقاوي والمعدات', advisor: 'مستشار الزراعة: تكلفة معقولة بنتائج متوسطة.',
-        immediate: { budgetBalance: -2, satisfaction: 1 }, medium: { agricultureLevel: 3 }, long: {} },
+        immediate: { budgetBalance: -2, satisfaction: 1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'agriculture', investDelta: 3 } },
       { label: 'تجاهل القطاع الزراعي حالياً', advisor: 'مستشار الزراعة: استمرار الاعتماد على الاستيراد الغذائي.',
-        immediate: {}, medium: { agricultureLevel: -1 }, long: {} }
+        immediate: {}, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'agriculture', investDelta: -2 } }
     ]
   },
   {
     id: 'tourism_development', category: 'economic', type: 'tactical', title: 'تطوير القطاع السياحي',
-    description: 'مواقع أثرية مثل لبدة وصبراتة وشحات، إلى جانب واحات غدامس وغات، تحمل إمكانات سياحية كبيرة لم تُستغل بعد.',
+    description: 'مواقع أثرية مثل لبدة وصبراتة وشحات، إلى جانب واحات غدامس وغات، تحمل إمكانات سياحية كبيرة لم تُستغل بعد - لكن أي استثمار سياحي يبقى محدود الأثر دون أمن مستقر.',
     minMonth: 4, cooldown: 12,
     options: [
-      { label: 'ترميم المواقع الأثرية وتطوير بنية سياحية متكاملة', advisor: 'مستشار السياحة: استثمار كبير بعائد متوسط المدى.',
-        immediate: { budgetBalance: -5 }, medium: { tourismLevel: 5 }, long: { tourismLevel: 6, internationalSupport: 2 } },
+      { label: 'ترميم المواقع الأثرية وتطوير بنية سياحية متكاملة', advisor: 'مستشار السياحة: استثمار كبير بعائد متوسط المدى - رهين بمستوى الأمن الحالي.',
+        immediate: { budgetBalance: -5 }, medium: {}, long: { internationalSupport: 2 },
+        sectorPolicyEffect: { sector: 'tourism', investDelta: 7 } },
       { label: 'حملات ترويجية دولية محدودة التكلفة', advisor: 'مستشار السياحة: خطوة أولى منخفضة المخاطر.',
-        immediate: { budgetBalance: -1 }, medium: { tourismLevel: 2 }, long: {} },
+        immediate: { budgetBalance: -1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'tourism', investDelta: 3 } },
       { label: 'تأجيل الاستثمار السياحي لحين تحسن الأمن', advisor: 'مستشار السياحة: قرار حذر لكنه يفوّت فرصاً.',
-        immediate: {}, medium: {}, long: {} }
+        immediate: {}, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'tourism', investDelta: -2 } }
     ]
   },
   {
@@ -312,11 +325,14 @@ const DECISIONS = [
     minMonth: 8, oneTime: true,
     options: [
       { label: 'إنشاء مناطق صناعية كبرى بشراكة حكومية-خاصة', advisor: 'المستشار الاقتصادي: يخلق وظائف صناعية حقيقية.',
-        immediate: { budgetBalance: -6 }, medium: { industryLevel: 5, unemployment: -2 }, long: { industryLevel: 6, tradeBalance: 4 } },
+        immediate: { budgetBalance: -6, unemployment: -1 }, medium: {}, long: { tradeBalance: 2 },
+        sectorPolicyEffect: { sector: 'industry', ownership: 'partnership', investDelta: 6 } },
       { label: 'حوافز ضريبية لمستثمرين صناعيين محليين', advisor: 'المستشار الاقتصادي: أقل تكلفة مباشرة على الخزينة.',
-        immediate: { budgetBalance: -1 }, medium: { industryLevel: 2 }, long: { industryLevel: 3 } },
-      { label: 'التركيز على الصناعات البتروكيماوية فقط', advisor: 'وزير النفط: يستغل الغاز الطبيعي كمادة خام رخيصة.',
-        immediate: { budgetBalance: -3 }, medium: { industryLevel: 3, oilProduction: 20 }, long: { industryLevel: 3 } }
+        immediate: { budgetBalance: -1 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'industry', investDelta: 3 } },
+      { label: 'التركيز على الصناعات البتروكيماوية فقط', advisor: 'وزير النفط: يستغل الغاز الطبيعي كمادة خام رخيصة - كلما ارتفع إنتاج النفط استفادت الصناعة تلقائياً.',
+        immediate: { budgetBalance: -3 }, medium: {}, long: {},
+        sectorPolicyEffect: { sector: 'industry', investDelta: 4 } }
     ]
   },
   {

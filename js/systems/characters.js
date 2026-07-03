@@ -141,10 +141,10 @@ function applyCabinetMonthlyEffects(state) {
     const competenceBonus = (ch.stats.competence - 50) / 50 * 0.35;
     const corruptionPenalty = (ch.stats.corruption / 100) * 0.25;
     let netEffect = competenceBonus - corruptionPenalty;
-    if (hasTrait(ch, 'econ_expert') && ['budgetBalance', 'economicDevelopment'].includes(m.effectKey)) netEffect += 0.2;
+    if (hasTrait(ch, 'econ_expert') && ['budgetBalance', 'economicDevelopment', 'oilProduction', 'agricultureLevel', 'tourismLevel', 'industryLevel'].includes(m.effectKey)) netEffect += 0.2;
     if (hasTrait(ch, 'diplomat') && m.effectKey === 'internationalSupport') netEffect += 0.3;
     if (hasTrait(ch, 'military_strategist') && m.effectKey === 'security') netEffect += 0.3;
-    if (hasTrait(ch, 'tech_expert') && m.effectKey === 'infrastructureLevel') netEffect += 0.3;
+    if (hasTrait(ch, 'tech_expert') && ['infrastructureLevel', 'industryLevel'].includes(m.effectKey)) netEffect += 0.3;
     if (hasTrait(ch, 'charismatic')) state.indicators.satisfaction = clampIndicator('satisfaction', state.indicators.satisfaction + 0.15);
 
     if (state.indicators[m.effectKey] !== undefined) {

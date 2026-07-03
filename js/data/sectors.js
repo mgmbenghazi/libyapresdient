@@ -25,6 +25,39 @@ const INDICATOR_DOMAINS = [
   { id: 'international', name: 'المكانة الدولية', icon: '🌍', keys: ['internationalSupport', 'tradeBalance'] }
 ];
 
+// وصف واجهة القطاعات الإنتاجية الأربعة القابلة للتحكم الكامل: كل قطاع يُدار بثلاثة أذرع دائمة -
+// استثمار (سطر ميزانية حقيقي ضمن budget.allocations)، نموذج ملكية (state/partnership/privatized)، وتوجّه إنتاج (0 محلي - 100 تصدير/انفتاح)
+const PRODUCTIVE_SECTOR_META = {
+  oil: {
+    name: 'النفط والغاز', icon: '🛢️', indicatorKey: 'oilProduction', budgetKey: 'oilSector', revenueKey: 'oilRevenue',
+    ownershipLabels: { state: 'حكومي بالكامل', partnership: 'شراكة مع شركات أجنبية', privatized: 'خصخصة' },
+    orientationLabel: 'وجهة الإنتاج', orientationLow: 'استخدام محلي', orientationHigh: 'تصدير'
+  },
+  agriculture: {
+    name: 'الزراعة', icon: '🌾', indicatorKey: 'agricultureLevel', budgetKey: 'agricultureSector', revenueKey: 'agricultureRevenue',
+    ownershipLabels: { state: 'إدارة حكومية', partnership: 'تعاونيات مدعومة', privatized: 'مزارع خاصة كبرى' },
+    orientationLabel: 'توجّه الإنتاج', orientationLow: 'اكتفاء ذاتي', orientationHigh: 'محاصيل تصديرية'
+  },
+  tourism: {
+    name: 'السياحة', icon: '🏖️', indicatorKey: 'tourismLevel', budgetKey: 'tourismSector', revenueKey: 'tourismRevenue',
+    ownershipLabels: { state: 'حكومي', partnership: 'شراكة قطاع خاص محلي', privatized: 'منتجعات أجنبية' },
+    orientationLabel: 'سياسة الانفتاح', orientationLow: 'مقيّدة', orientationHigh: 'منفتحة'
+  },
+  industry: {
+    name: 'الصناعة', icon: '🏭', indicatorKey: 'industryLevel', budgetKey: 'industrySector', revenueKey: 'industryRevenue',
+    ownershipLabels: { state: 'حكومي', partnership: 'شراكة مختلطة', privatized: 'خصخصة كاملة' },
+    orientationLabel: 'توجّه الإنتاج', orientationLow: 'إحلال الواردات', orientationHigh: 'تصنيع تصديري'
+  }
+};
+
+// أثر نموذج الملكية على كل قطاع: حصة الدولة من عوائده مباشرة، ومضاعف سرعة نموه
+// (حكومي: كل العائد للدولة لكن بطء بيروقراطي؛ شراكة: أسرع نمو بفضل الخبرة والرأسمال لكن حصة أقل؛ خصخصة: نمو جيد لكن عائد شبه ضريبي فقط)
+const OWNERSHIP_PROFILES = {
+  state: { revenueShare: 1.0, growthMult: 0.75 },
+  partnership: { revenueShare: 0.65, growthMult: 1.3 },
+  privatized: { revenueShare: 0.2, growthMult: 1.15 }
+};
+
 // الحدود الدنيا/القصوى الافتراضية للمؤشرات (0-100 إلا ما استثني)
 const INDICATOR_META = {
   satisfaction: { name: 'رضا الشعب', unit: '%', min: 0, max: 100, good: 'high' },

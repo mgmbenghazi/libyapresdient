@@ -43,6 +43,20 @@ function applyDecisionOption(state, decision, optionIndex) {
     applyRelationsEffect(state, effect);
   }
 
+  // تعديل سياسة قطاع إنتاجي بشكل دائم (ملكية/توجّه/استثمار) بدل أثر لمرة واحدة يُنسى
+  if (option.sectorPolicyEffect) {
+    const eff = option.sectorPolicyEffect;
+    const policy = state.sectorPolicies[eff.sector];
+    if (policy) {
+      if (eff.ownership) policy.ownership = eff.ownership;
+      if (eff.orientationDelta !== undefined) policy.orientation = Math.max(0, Math.min(100, policy.orientation + eff.orientationDelta));
+      if (eff.investDelta !== undefined) {
+        const budgetKey = PRODUCTIVE_SECTOR_META[eff.sector].budgetKey;
+        state.budget.allocations[budgetKey] = Math.max(2, Math.min(35, state.budget.allocations[budgetKey] + eff.investDelta));
+      }
+    }
+  }
+
   if (decision.oneTime) state.decisionsUsed.push(decision.id);
   if (decision.cooldown) state.decisionCooldowns[decision.id] = state.month + decision.cooldown;
 

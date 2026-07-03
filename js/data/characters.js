@@ -19,10 +19,12 @@ const MINISTRIES = [
   { id: 'foreign', name: 'وزير الخارجية', effectKey: 'internationalSupport', sector: null },
   { id: 'defense', name: 'وزير الدفاع', effectKey: 'security', sector: 'security' },
   { id: 'interior', name: 'وزير الداخلية', effectKey: 'security', sector: 'security' },
-  { id: 'oil', name: 'وزير النفط', effectKey: 'oilProduction', sector: null },
+  { id: 'oil', name: 'وزير النفط', effectKey: 'oilProduction', sector: 'oilSector' },
   { id: 'education', name: 'وزير التعليم', effectKey: 'educationLevel', sector: 'education' },
   { id: 'health', name: 'وزير الصحة', effectKey: 'healthLevel', sector: 'health' },
-  { id: 'development', name: 'وزير التنمية', effectKey: 'infrastructureLevel', sector: 'infrastructure' }
+  { id: 'development', name: 'وزير التنمية', effectKey: 'infrastructureLevel', sector: 'infrastructure' },
+  { id: 'agriculture', name: 'وزيرة الزراعة', effectKey: 'agricultureLevel', sector: 'agricultureSector' },
+  { id: 'industry', name: 'وزير الصناعة', effectKey: 'industryLevel', sector: 'industrySector' }
 ];
 
 const CHARACTERS = [
@@ -62,6 +64,14 @@ const CHARACTERS = [
   { id: 'sallabi', name: 'م. هدى الصلابي', role: 'وزيرة التنمية', category: 'government', ministry: 'development',
     bio: 'مهندسة مدنية عملت في مشاريع بنية تحتية كبرى.',
     stats: { loyalty: 60, competence: 76, popularity: 50, influence: 40, ambition: 55, corruption: 25 },
+    politicalLean: 'براغماتي', region: 'west', traits: ['tech_expert'] },
+  { id: 'fezzani', name: 'د. فوزية الفزانية', role: 'وزيرة الزراعة', category: 'government', ministry: 'agriculture',
+    bio: 'خبيرة اقتصاد زراعي، أشرفت على مشاريع استصلاح أراضٍ في الجنوب قبل تعيينها.',
+    stats: { loyalty: 64, competence: 74, popularity: 52, influence: 38, ambition: 45, corruption: 20 },
+    politicalLean: 'معتدل', region: 'south', traits: ['loyal_patriot'] },
+  { id: 'marghani', name: 'م. طارق المرغني', role: 'وزير الصناعة', category: 'government', ministry: 'industry',
+    bio: 'مهندس صناعي من مصراتة، قاد توسعة مصانع الحديد والصلب قبل دخوله الحكومة.',
+    stats: { loyalty: 58, competence: 79, popularity: 46, influence: 50, ambition: 62, corruption: 30 },
     politicalLean: 'براغماتي', region: 'west', traits: ['tech_expert'] },
 
   // ------- قادة القبائل -------

@@ -135,6 +135,17 @@ function sparklineColor(key) {
   return status === 'good' ? '#3fbf5e' : status === 'medium' ? '#e0a72b' : '#e5484d';
 }
 
+const OWNERSHIP_BADGE_ICON = { state: '🏛️', partnership: '🤝', privatized: '🏢' };
+
+// شارة صغيرة بنموذج الملكية الحالي - تظهر فقط على صفوف القطاعات الإنتاجية الأربعة القابلة لضبط ملكيتها
+function ownershipBadgeFor(key) {
+  const entry = Object.entries(PRODUCTIVE_SECTOR_META).find(([, meta]) => meta.indicatorKey === key);
+  if (!entry) return '';
+  const [sectorId] = entry;
+  const ownership = Game.state.sectorPolicies[sectorId].ownership;
+  return `<span class="metric-ownership-badge" title="نموذج الملكية: ${PRODUCTIVE_SECTOR_META[sectorId].ownershipLabels[ownership]}">${OWNERSHIP_BADGE_ICON[ownership]}</span>`;
+}
+
 function metricRowHtml(key) {
   const meta = INDICATOR_META[key];
   const val = Game.state.indicators[key];
@@ -146,7 +157,7 @@ function metricRowHtml(key) {
   const arrow = Math.abs(delta) < 0.05 ? '~' : (delta > 0 ? '↑' : '↓');
   return `
     <div class="metric-row" data-key="${key}">
-      <div class="metric-name">${meta.name}</div>
+      <div class="metric-name">${meta.name}${ownershipBadgeFor(key)}</div>
       <canvas class="spark" data-spark="${key}" width="54" height="22"></canvas>
       <div class="metric-value">${fmtNum(val)}</div>
       <div class="metric-delta ${deltaCls}">${arrow}${fmtNum(Math.abs(delta))}</div>
@@ -382,6 +393,7 @@ function applyBudgetPreset(targetTotal) {
     s.budget.allocations[k] = Math.max(2, Math.min(35, Math.round(s.budget.allocations[k] * scale)));
   });
   renderBudgetTab();
+  renderSectorsTab();
 }
 
 function bindBudgetPresets() {
@@ -389,8 +401,12 @@ function bindBudgetPresets() {
   const austerity = document.getElementById('preset-austerity');
   const expansion = document.getElementById('preset-expansion');
   if (balanced) balanced.onclick = () => {
-    Game.state.budget.allocations = { education: 15, health: 15, security: 15, infrastructure: 15, subsidies: 15, salaries: 15, debtService: 5, economicDev: 5 };
+    Game.state.budget.allocations = {
+      education: 11, health: 11, security: 11, infrastructure: 11, subsidies: 11, salaries: 11, debtService: 4, economicDev: 4,
+      oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
+    };
     renderBudgetTab();
+    renderSectorsTab();
   };
   if (austerity) austerity.onclick = () => applyBudgetPreset(85);
   if (expansion) expansion.onclick = () => applyBudgetPreset(115);
@@ -446,6 +462,128 @@ function renderRevenueExpenditureChart() {
   if (!canvas) return;
   const hist = Game.state.history;
   drawDualLineChart(canvas, hist.map(h => h.totalRevenue || 0), hist.map(h => h.totalExpenditure || 0), '#3fbf5e', '#e5484d');
+}
+
+// ------- تبويب القطاعات الإنتاجية الفرعي -------
+function renderSectorsTab() {
+  const s = Game.state;
+  const wrap = document.getElementById('sector-cards');
+  if (!wrap) return;
+  wrap.innerHTML = Object.keys(PRODUCTIVE_SECTOR_META).map(sectorCardHtml).join('');
+  Object.keys(PRODUCTIVE_SECTOR_META).forEach(sectorId => {
+    const meta = PRODUCTIVE_SECTOR_META[sectorId];
+    const canvas = wrap.querySelector(`canvas[data-spark-sector="${sectorId}"]`);
+    if (!canvas) return;
+    const series = s.history.slice(-10).map(h => h[meta.indicatorKey]);
+    drawSparkline(canvas, series, sparklineColor(meta.indicatorKey));
+  });
+  bindSectorCardEvents();
+  renderSectorLivePreviews();
+}
+
+function sectorCardHtml(sectorId) {
+  const meta = PRODUCTIVE_SECTOR_META[sectorId];
+  const s = Game.state;
+  const policy = s.sectorPolicies[sectorId];
+  const val = s.indicators[meta.indicatorKey];
+  const investPct = s.budget.allocations[meta.budgetKey];
+  return `
+    <div class="sector-ctrl-card">
+      <div class="sc-head">
+        <div class="sc-head-left"><span class="sc-icon">${meta.icon}</span><span class="sc-name">${meta.name}</span></div>
+        <div class="sc-value">${fmtNum(val)}</div>
+      </div>
+      <canvas class="sc-spark" data-spark-sector="${sectorId}" width="240" height="34"></canvas>
+
+      <div class="sc-lever">
+        <div class="sc-lever-label"><span>الاستثمار</span><span class="sc-lever-val" data-invest-val="${sectorId}">${investPct}%</span></div>
+        <input type="range" class="sc-slider" data-invest-slider="${sectorId}" min="2" max="35" value="${investPct}">
+      </div>
+
+      <div class="sc-lever">
+        <div class="sc-lever-label"><span>نموذج الملكية</span></div>
+        <div class="seg-control" data-ownership-group="${sectorId}">
+          ${['state', 'partnership', 'privatized'].map(o => `<button type="button" class="seg-btn ${policy.ownership === o ? 'active' : ''}" data-sector="${sectorId}" data-ownership="${o}">${meta.ownershipLabels[o]}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="sc-lever">
+        <div class="sc-lever-label"><span>${meta.orientationLabel}</span><span class="sc-lever-val" data-orient-val="${sectorId}">${policy.orientation}%</span></div>
+        <input type="range" class="sc-slider" data-orient-slider="${sectorId}" min="0" max="100" value="${policy.orientation}">
+        <div class="sc-orient-labels"><span>${meta.orientationLow}</span><span>${meta.orientationHigh}</span></div>
+      </div>
+
+      <div class="sc-preview" data-preview="${sectorId}"></div>
+    </div>`;
+}
+
+function bindSectorCardEvents() {
+  const wrap = document.getElementById('sector-cards');
+  if (!wrap) return;
+  wrap.querySelectorAll('[data-invest-slider]').forEach(input => {
+    input.addEventListener('input', () => {
+      const sectorId = input.dataset.investSlider;
+      const meta = PRODUCTIVE_SECTOR_META[sectorId];
+      Game.state.budget.allocations[meta.budgetKey] = Number(input.value);
+      wrap.querySelector(`[data-invest-val="${sectorId}"]`).textContent = input.value + '%';
+      renderSectorLivePreviews();
+      renderBudgetSummary();
+    });
+  });
+  wrap.querySelectorAll('[data-orient-slider]').forEach(input => {
+    input.addEventListener('input', () => {
+      const sectorId = input.dataset.orientSlider;
+      Game.state.sectorPolicies[sectorId].orientation = Number(input.value);
+      wrap.querySelector(`[data-orient-val="${sectorId}"]`).textContent = input.value + '%';
+      renderSectorLivePreviews();
+    });
+  });
+  wrap.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sectorId = btn.dataset.sector;
+      Game.state.sectorPolicies[sectorId].ownership = btn.dataset.ownership;
+      wrap.querySelectorAll(`.seg-control[data-ownership-group="${sectorId}"] .seg-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderSectorLivePreviews();
+      renderBudgetSummary();
+    });
+  });
+}
+
+// معاينة حية مبنية على المحرك الفعلي: تستنسخ الحالة وتُشغّل شهراً افتراضياً واحداً بلا أي تأثير على اللعبة الحقيقية
+function previewSectorOutlook(sectorId) {
+  const meta = PRODUCTIVE_SECTOR_META[sectorId];
+  const clone = JSON.parse(JSON.stringify(Game.state));
+  const before = clone.indicators[meta.indicatorKey];
+  const revenue = estimateMonthlyRevenue(clone);
+  monthlyEconomicTick(clone);
+  const after = clone.indicators[meta.indicatorKey];
+  return { delta: after - before, monthlyRevenue: revenue[meta.revenueKey] };
+}
+
+function renderSectorLivePreviews() {
+  Object.keys(PRODUCTIVE_SECTOR_META).forEach(sectorId => {
+    const el = document.querySelector(`[data-preview="${sectorId}"]`);
+    if (!el) return;
+    const outlook = previewSectorOutlook(sectorId);
+    const trendCls = outlook.delta > 0.05 ? 'good' : outlook.delta < -0.05 ? 'bad' : 'medium';
+    const arrow = outlook.delta > 0.05 ? '↑' : outlook.delta < -0.05 ? '↓' : '~';
+    el.innerHTML = `
+      <div class="sc-preview-item"><span class="sc-preview-label">إيراد شهري متوقع</span><span class="sc-preview-value">${fmtNum(outlook.monthlyRevenue, 0)}</span></div>
+      <div class="sc-preview-item"><span class="sc-preview-label">الاتجاه المتوقع</span><span class="sc-preview-value ${trendCls}">${arrow} ${fmtNum(Math.abs(outlook.delta), 2)}/شهر</span></div>`;
+  });
+}
+
+function bindEconomySubTabs() {
+  document.querySelectorAll('.subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.tab-panel');
+      group.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+      group.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      group.querySelector('#subtab-' + btn.dataset.subtab).classList.add('active');
+    });
+  });
 }
 
 function relColor(v) { return v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--medium)' : 'var(--bad)'; }
@@ -518,6 +656,7 @@ function renderGameScreen() {
   renderTrendChart();
   renderActivityTicker();
   renderBudgetTab();
+  renderSectorsTab();
   renderCabinetGrid();
   renderCharacterFilters();
   renderCharacterGrid();

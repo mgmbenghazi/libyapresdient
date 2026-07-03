@@ -7,7 +7,8 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 3: + مؤشرات القطاعات الجديدة (agricultureLevel, tourismLevel, industryLevel, tradeBalance)
 // 4: + شبكة علاقات الشخصيات (characterRelations) ونظام المهام (missions) وحقل busyUntil لكل شخصية
 // 5: + مهلة تبريد للأحداث العشوائية (eventCooldowns) لمنع تكرارها المتتالي
-const CURRENT_SAVE_VERSION = 5;
+// 6: + سياسات القطاعات الإنتاجية (sectorPolicies) وأسطر استثمارها في الميزانية (oilSector/agricultureSector/tourismSector/industrySector)
+const CURRENT_SAVE_VERSION = 6;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -27,9 +28,18 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     gameOver: false, gameOverReason: null,
     indicators,
     budget: {
-      allocations: { education: 15, health: 15, security: 15, infrastructure: 15, subsidies: 15, salaries: 15, debtService: 5, economicDev: 5 }
+      allocations: {
+        education: 11, health: 11, security: 11, infrastructure: 11, subsidies: 11, salaries: 11, debtService: 4, economicDev: 4,
+        oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
+      }
     },
     economy: { oilPrice: 100 },
+    sectorPolicies: {
+      oil: { ownership: 'state', orientation: 75 },
+      agriculture: { ownership: 'privatized', orientation: 30 },
+      tourism: { ownership: 'privatized', orientation: 40 },
+      industry: { ownership: 'state', orientation: 45 }
+    },
     relations: {
       tribes: TRIBES.map(t => ({ ...t })),
       parties: PARTIES.map(p => ({ ...p })),
@@ -98,6 +108,24 @@ const SAVE_MIGRATIONS = {
     }
     s.version = 5;
     return s;
+  },
+  5: function migrateV5toV6(s) {
+    if (!s.sectorPolicies || typeof s.sectorPolicies !== 'object') {
+      s.sectorPolicies = {
+        oil: { ownership: 'state', orientation: 75 },
+        agriculture: { ownership: 'privatized', orientation: 30 },
+        tourism: { ownership: 'privatized', orientation: 40 },
+        industry: { ownership: 'state', orientation: 45 }
+      };
+    }
+    const sectorInvestDefaults = { oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5 };
+    if (!s.budget) s.budget = { allocations: {} };
+    if (!s.budget.allocations) s.budget.allocations = {};
+    Object.entries(sectorInvestDefaults).forEach(([key, def]) => {
+      if (s.budget.allocations[key] === undefined) s.budget.allocations[key] = def;
+    });
+    s.version = 6;
+    return s;
   }
 };
 
@@ -120,7 +148,7 @@ function validateStateShape(s) {
   const requiredPaths = [
     ['presidentName'], ['month'], ['year'],
     ['indicators', 'satisfaction'], ['indicators', 'treasury'],
-    ['budget', 'allocations'], ['economy', 'oilPrice'],
+    ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']

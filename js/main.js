@@ -167,6 +167,7 @@ function bindGameScreen() {
 
   bindMapLayerToggle();
   bindDashboardQuickNav();
+  bindEconomySubTabs();
 }
 
 function flashSaveButton() {
