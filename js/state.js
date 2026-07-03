@@ -8,7 +8,8 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 4: + شبكة علاقات الشخصيات (characterRelations) ونظام المهام (missions) وحقل busyUntil لكل شخصية
 // 5: + مهلة تبريد للأحداث العشوائية (eventCooldowns) لمنع تكرارها المتتالي
 // 6: + سياسات القطاعات الإنتاجية (sectorPolicies) وأسطر استثمارها في الميزانية (oilSector/agricultureSector/tourismSector/industrySector)
-const CURRENT_SAVE_VERSION = 6;
+// 7: + مهلة تبريد إجراء "التواصل" المباشر مع كيانات العلاقات (relationsCooldowns)
+const CURRENT_SAVE_VERSION = 7;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -51,6 +52,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     scheduledEffects: [], // {applyAtMonth, effects}
     decisionCooldowns: {}, // id -> month usable again
     eventCooldowns: {}, // id -> month usable again
+    relationsCooldowns: {}, // "kind:id" -> month usable again لإجراء "تواصل" المباشر
     decisionsUsed: [], // oneTime ids used
     decisionsLog: [],
     eventsLog: [],
@@ -126,6 +128,13 @@ const SAVE_MIGRATIONS = {
     });
     s.version = 6;
     return s;
+  },
+  6: function migrateV6toV7(s) {
+    if (!s.relationsCooldowns || typeof s.relationsCooldowns !== 'object') {
+      s.relationsCooldowns = {};
+    }
+    s.version = 7;
+    return s;
   }
 };
 
@@ -151,7 +160,7 @@ function validateStateShape(s) {
     ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
-    ['scheduledEffects'], ['eventCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
+    ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
   ];
   for (const path of requiredPaths) {
     let cur = s;

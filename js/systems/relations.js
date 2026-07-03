@@ -67,7 +67,70 @@ function applyRelationsEffect(state, effect) {
   } else if (effect.type === 'country' && effect.id) {
     const c = state.relations.countries.find(x => x.id === effect.id);
     if (c) c.relation = pct(c.relation + effect.delta);
+  } else if (effect.type === 'org' && effect.id) {
+    const o = state.relations.orgs.find(x => x.id === effect.id);
+    if (o) o.relation = pct(o.relation + effect.delta);
   }
+}
+
+// ------- تفعيل تبويب العلاقات: وصول موحّد لأي كيان علاقات بغض النظر عن نوعه -------
+const RELATIONS_KIND_META = {
+  tribe: { list: 'tribes', valueKey: 'loyalty', ministry: 'interior', label: 'الولاء' },
+  party: { list: 'parties', valueKey: 'support', ministry: 'pm', label: 'التأييد' },
+  institution: { list: 'institutions', valueKey: 'legitimacy', ministry: 'interior', label: 'الشرعية' },
+  country: { list: 'countries', valueKey: 'relation', ministry: 'foreign', label: 'العلاقة' },
+  org: { list: 'orgs', valueKey: 'relation', ministry: 'foreign', label: 'العلاقة' }
+};
+
+function getRelationsEntity(state, kind, id) {
+  const meta = RELATIONS_KIND_META[kind];
+  if (!meta) return null;
+  const entity = state.relations[meta.list].find(x => x.id === id);
+  if (!entity) return null;
+  return { entity, valueKey: meta.valueKey, label: meta.label, value: entity[meta.valueKey] };
+}
+
+// أثر مهمة موجَّهة على الكيان نفسه (لا مؤشراً وطنياً فقط) - يُستخدم من resolveMissions عند وجود targetEntity
+function applyMissionOutcomeToEntity(state, targetEntity, magnitude) {
+  if (!targetEntity) return null;
+  const found = getRelationsEntity(state, targetEntity.kind, targetEntity.id);
+  if (!found) return null;
+  found.entity[found.valueKey] = pct(found.entity[found.valueKey] + magnitude);
+  return found.entity.name;
+}
+
+// إجراء "تواصل" مباشر ومحدود التكرار من تبويب العلاقات - وكالة حقيقية للاعب بدل الانتظار السلبي
+const OUTREACH_COOLDOWN_MONTHS = 3;
+const OUTREACH_COST = { tribe: 0, party: 0, institution: 0, country: 800, org: 800 };
+
+function canOutreach(state, kind, id) {
+  const key = kind + ':' + id;
+  const readyMonth = state.relationsCooldowns[key] || 0;
+  return state.month >= readyMonth;
+}
+
+function outreachToEntity(state, kind, id) {
+  const found = getRelationsEntity(state, kind, id);
+  if (!found) return { ok: false, msg: 'كيان غير موجود.' };
+  const key = kind + ':' + id;
+  if (!canOutreach(state, kind, id)) {
+    return { ok: false, msg: `التواصل مع ${found.entity.name} ما زال في فترة تهدئة حتى الشهر ${state.relationsCooldowns[key]}.` };
+  }
+  const cost = OUTREACH_COST[kind] || 0;
+  if (cost > 0 && state.indicators.treasury < cost) {
+    return { ok: false, msg: 'الخزينة لا تكفي لتغطية تكلفة هذا التواصل الدبلوماسي.' };
+  }
+  if (cost > 0) state.indicators.treasury -= cost;
+
+  const ministryId = RELATIONS_KIND_META[kind].ministry;
+  const minister = state.cabinet[ministryId] ? getCharacter(state, state.cabinet[ministryId]) : null;
+  const ministerBonus = minister ? (minister.stats.competence - 50) / 50 * 2 : 0;
+  const delta = 4 + Math.random() * 3 + ministerBonus;
+
+  found.entity[found.valueKey] = pct(found.entity[found.valueKey] + delta);
+  state.relationsCooldowns[key] = state.month + OUTREACH_COOLDOWN_MONTHS;
+
+  return { ok: true, msg: `تواصلت مع ${found.entity.name}. ارتفع مؤشر ${found.label} بمقدار ${delta.toFixed(1)}.`, delta };
 }
 
 // محلّل الأهداف الديناميكية: يحدد وقت عرض القرار/الحدث للاعب أي كيان بالضبط يستهدفه هذه المرة

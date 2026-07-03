@@ -588,40 +588,123 @@ function bindEconomySubTabs() {
 
 function relColor(v) { return v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--medium)' : 'var(--bad)'; }
 
+// صف كيان علاقات قابل للنقر - بديل الشريط الثابت القديم: يفتح نافذة تفصيل بإجراءات فعلية
+function relationsRowHtml(kind, it, valKey, flag) {
+  const v = it[valKey];
+  const onCooldown = !canOutreach(Game.state, kind, it.id);
+  return `
+    <div class="rel-item rel-item-clickable" data-rel-kind="${kind}" data-rel-id="${it.id}">
+      <span>${flag || ''}${it.name}${onCooldown ? ' <span class="rel-cooldown-badge" title="في فترة تهدئة">⏳</span>' : ''}</span>
+      <div class="rel-bar"><div class="rel-bar-fill" style="width:${v}%;background:${relColor(v)}"></div></div>
+    </div>`;
+}
+
+function bindRelationsRows(wrap) {
+  wrap.querySelectorAll('[data-rel-kind]').forEach(row => {
+    row.addEventListener('click', () => openRelationsEntityModal(row.dataset.relKind, row.dataset.relId));
+  });
+}
+
 function renderRelationsTab() {
   const s = Game.state;
-  function fillList(elId, items, nameKey, valKey, flagMap) {
+  function fillList(elId, kind, items, valKey, flagMap) {
     const wrap = document.getElementById(elId);
-    wrap.innerHTML = '';
-    items.forEach(it => {
-      const v = it[valKey];
-      const flag = flagMap && flagMap[it.id] ? flagMap[it.id] + ' ' : '';
-      const row = document.createElement('div');
-      row.className = 'rel-item';
-      row.innerHTML = `<span>${flag}${it[nameKey]}</span><div class="rel-bar"><div class="rel-bar-fill" style="width:${v}%;background:${relColor(v)}"></div></div>`;
-      wrap.appendChild(row);
-    });
+    wrap.innerHTML = items.map(it => relationsRowHtml(kind, it, valKey, flagMap && flagMap[it.id])).join('');
+    bindRelationsRows(wrap);
   }
-  fillList('rel-tribes', s.relations.tribes, 'name', 'loyalty');
-  fillList('rel-parties', s.relations.parties, 'name', 'support');
-  fillList('rel-institutions', s.relations.institutions, 'name', 'legitimacy');
-  fillList('rel-orgs', s.relations.orgs, 'name', 'relation');
+  fillList('rel-tribes', 'tribe', s.relations.tribes, 'loyalty');
+  fillList('rel-parties', 'party', s.relations.parties, 'support');
+  fillList('rel-institutions', 'institution', s.relations.institutions, 'legitimacy');
+  fillList('rel-orgs', 'org', s.relations.orgs, 'relation');
 
   const countriesWrap = document.getElementById('rel-countries');
-  countriesWrap.innerHTML = '';
-  COUNTRY_GROUPS.forEach(g => {
+  countriesWrap.innerHTML = COUNTRY_GROUPS.map(g => {
     const items = s.relations.countries.filter(c => c.group === g.id);
-    if (!items.length) return;
-    const header = document.createElement('div');
-    header.className = 'rel-group-header';
-    header.textContent = g.name;
-    countriesWrap.appendChild(header);
-    items.forEach(it => {
-      const flag = COUNTRY_FLAGS[it.id] ? COUNTRY_FLAGS[it.id] + ' ' : '';
-      const row = document.createElement('div');
-      row.className = 'rel-item';
-      row.innerHTML = `<span>${flag}${it.name}</span><div class="rel-bar"><div class="rel-bar-fill" style="width:${it.relation}%;background:${relColor(it.relation)}"></div></div>`;
-      countriesWrap.appendChild(row);
+    if (!items.length) return '';
+    return `<div class="rel-group-header">${g.name}</div>` +
+      items.map(it => relationsRowHtml('country', it, 'relation', COUNTRY_FLAGS[it.id])).join('');
+  }).join('');
+  bindRelationsRows(countriesWrap);
+}
+
+function relationsEntityFlavor(kind, entity) {
+  if (kind === 'tribe') return `الإقليم: ${regionName(entity.region)}`;
+  if (kind === 'country') return `المجموعة: ${(COUNTRY_GROUPS.find(g => g.id === entity.group) || {}).name || entity.group}`;
+  return '';
+}
+
+function openRelationsEntityModal(kind, id) {
+  const s = Game.state;
+  const found = getRelationsEntity(s, kind, id);
+  if (!found) return;
+  const flavor = relationsEntityFlavor(kind, found.entity);
+  const cooldownKey = kind + ':' + id;
+  const onCooldown = !canOutreach(s, kind, id);
+  const readyMonth = s.relationsCooldowns[cooldownKey];
+  const cost = OUTREACH_COST[kind] || 0;
+
+  const html = `
+    <span class="modal-tag">علاقات</span>
+    <h2>${found.entity.name}</h2>
+    ${flavor ? `<p class="modal-desc">${flavor}</p>` : ''}
+    <div class="char-stats-grid" style="grid-template-columns:1fr">${statMiniBar(found.label, found.value)}</div>
+    <div id="rel-outreach-msg"></div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="act-outreach" ${onCooldown ? 'disabled' : ''}>
+        تواصل ${cost > 0 ? `(${cost} مليون د.ل)` : ''}${onCooldown ? ` — متاح من الشهر ${readyMonth}` : ''}
+      </button>
+      <button class="btn" id="act-send-mission">أرسل مهمة</button>
+    </div>`;
+  showModal(html);
+  document.getElementById('act-outreach').addEventListener('click', () => {
+    const res = outreachToEntity(Game.state, kind, id);
+    document.getElementById('rel-outreach-msg').innerHTML = `<div class="opinion-box">${res.msg}</div>`;
+    if (res.ok) {
+      document.getElementById('act-outreach').setAttribute('disabled', 'disabled');
+      renderRelationsTab();
+    }
+  });
+  document.getElementById('act-send-mission').addEventListener('click', () => {
+    hideModal();
+    openTargetedMissionCharModal(kind, id);
+  });
+}
+
+// أنسب نوع مهمة موجودة لكل نوع كيان علاقات - "توعية ومصالحة" للكيانات الداخلية، "دبلوماسية" للدول والمنظمات
+const TARGET_KIND_MISSION_TYPE = { tribe: 'social', party: 'social', institution: 'social', country: 'diplomatic', org: 'diplomatic' };
+
+function openTargetedMissionCharModal(kind, id) {
+  const s = Game.state;
+  const found = getRelationsEntity(s, kind, id);
+  if (!found) return;
+  const typeId = TARGET_KIND_MISSION_TYPE[kind];
+  const type = MISSION_TYPES.find(t => t.id === typeId);
+  const eligible = s.characters.filter(c => !isCharacterBusy(s, c.id) && missionTypesForCharacter(c).some(t => t.id === typeId));
+
+  const optionsHtml = eligible.length
+    ? eligible.map(c => {
+        const chance = Math.round(computeMissionSuccessChance(c, type));
+        return `<div class="decision-option" data-char="${c.id}">
+          <div class="opt-label">${c.name}</div>
+          <div class="opt-advisor">${c.role} · نسبة النجاح المتوقعة: ${chance}%</div>
+        </div>`;
+      }).join('')
+    : `<p class="hint">لا توجد شخصية مناسبة متاحة حالياً لإرسال مهمة نحو ${found.entity.name}.</p>`;
+
+  const html = `
+    <span class="modal-tag">مهمة موجَّهة</span>
+    <h2>أرسل مهمة نحو ${found.entity.name}</h2>
+    <p class="modal-desc">${type.desc}</p>
+    <div class="decision-options" style="max-height:50vh;overflow-y:auto">${optionsHtml}</div>
+    <div class="nav-row"><button class="btn btn-ghost" id="modal-cancel">إلغاء</button></div>`;
+  showModal(html);
+  document.getElementById('modal-cancel').addEventListener('click', hideModal);
+  document.querySelectorAll('[data-char]').forEach(el => {
+    el.addEventListener('click', () => {
+      assignMission(Game.state, el.dataset.char, typeId, null, { kind, id });
+      hideModal();
+      renderCharacterGrid();
+      renderActiveMissionsPanel();
     });
   });
 }
@@ -657,6 +740,7 @@ function renderGameScreen() {
   renderActivityTicker();
   renderBudgetTab();
   renderSectorsTab();
+  renderActiveMissionsPanel();
   renderCabinetGrid();
   renderCharacterFilters();
   renderCharacterGrid();
@@ -669,6 +753,51 @@ function initials(name) { return name.trim().split(' ').slice(0, 2).map(w => w[0
 
 function statMiniBar(label, val) {
   return `<div class="stat-mini"><span>${label}</span><div class="stat-bar"><div class="stat-bar-fill" style="width:${val}%"></div><span></span></div><span>${Math.round(val)}</span></div>`;
+}
+
+// ------- لوحة المهام النشطة: تتبع مرئي دائم بدل تذكّر حالة كل شخصية يدوياً -------
+function renderActiveMissionsPanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('active-missions');
+  if (!wrap) return;
+  if (!s.missions.length) {
+    wrap.innerHTML = '<p class="hint">لا توجد مهام جارية حالياً - كلّف شخصية بمهمة من نافذتها، أو من تبويب العلاقات لاستهداف كيان بعينه.</p>';
+    return;
+  }
+  wrap.innerHTML = s.missions.map(m => {
+    const ch = getCharacter(s, m.charId);
+    const type = MISSION_TYPES.find(t => t.id === m.typeId);
+    if (!ch || !type) return '';
+    const monthsLeft = m.resolveAtMonth - s.month;
+    const chance = Math.round(computeMissionSuccessChance(ch, type));
+    const chanceCls = chance >= 60 ? 'good' : chance >= 35 ? 'medium' : 'bad';
+    let targetName = null;
+    if (m.targetEntity) {
+      const found = getRelationsEntity(s, m.targetEntity.kind, m.targetEntity.id);
+      if (found) targetName = found.entity.name;
+    }
+    return `<div class="mission-row">
+      <div class="mission-row-main"><b>${ch.name}</b> — ${type.name}${targetName ? ` نحو ${targetName}` : ''}</div>
+      <div class="mission-row-meta">
+        <span class="mission-chance ${chanceCls}">نجاح متوقع ${chance}%</span>
+        <span>يعود بعد ${monthsLeft} ${monthsLeft === 1 ? 'شهر' : 'أشهر'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMissionResultModal(result, onClose) {
+  const cls = result.success ? 'good' : 'bad';
+  const targetNote = result.targetName ? ` نحو ${result.targetName}` : '';
+  const html = `
+    <span class="modal-tag">نتيجة مهمة ${result.success ? '✓' : '✗'}</span>
+    <h2>${result.typeName}${targetNote}</h2>
+    <p class="modal-desc">${result.charName} ${result.success ? 'نجح في مهمته.' : 'فشل في مهمته.'}</p>
+    <div class="ind-detail-value ${cls}">${result.magnitude >= 0 ? '+' : ''}${fmtNum(result.magnitude)}<span class="ind-detail-unit">${result.effectName}</span></div>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">حسناً</button></div>`;
+  const dismiss = () => { hideModal(); onClose(); };
+  showModal(html, { onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 
 function renderCabinetGrid() {
@@ -834,6 +963,7 @@ function openMissionModal(charId) {
         assignMission(Game.state, charId, type.id);
         hideModal();
         renderCharacterGrid();
+        renderActiveMissionsPanel();
       }
     });
   });
@@ -857,6 +987,7 @@ function openMissionCountryModal(charId, missionTypeId) {
       assignMission(Game.state, charId, missionTypeId, el.dataset.country);
       hideModal();
       renderCharacterGrid();
+      renderActiveMissionsPanel();
     });
   });
 }

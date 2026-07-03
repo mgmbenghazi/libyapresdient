@@ -176,8 +176,9 @@ function applyCabinetMonthlyEffects(state) {
   });
 
   driftCharacterRelations(state);
-  resolveMissions(state);
+  const missionResults = resolveMissions(state);
   processCastTurnover(state);
+  return missionResults;
 }
 
 // ------- شبكة العلاقات بين الشخصيات -------
@@ -217,7 +218,20 @@ function isCharacterBusy(state, charId) {
   return ch && ch.busyUntil && ch.busyUntil > state.month;
 }
 
-function assignMission(state, charId, missionTypeId, targetCountryId) {
+// نسبة نجاح المهمة - دالة نقية بلا أي تعديل على الحالة، تُستخدم من المعاينة الحية في لوحة "المهام النشطة"
+// ومن resolveMissions نفسها عند الحسم الفعلي، لضمان تطابق المعاينة مع النتيجة الحقيقية
+function computeMissionSuccessChance(ch, type) {
+  let successChance = 45 + (ch.stats.competence - 50) * 0.6 + (ch.stats.loyalty - 50) * 0.2;
+  if (hasTrait(ch, type.boostTrait)) successChance += 20;
+  if (hasTrait(ch, 'negotiator')) successChance += 10;
+  // مكافأة "ملاءمة الدور": سفير يمثل بلده، زعيم قبلي يهدئ منطقته، رجل أعمال يدير ملفاً اقتصادياً - طبيعي أن ينجحوا أكثر
+  if (ch.category === 'foreign' && type.id === 'representation') successChance += 25;
+  if (ch.category === 'tribal' && type.id === 'security') successChance += 15;
+  if (ch.category === 'business' && type.id === 'economic') successChance += 15;
+  return Math.max(10, Math.min(90, successChance));
+}
+
+function assignMission(state, charId, missionTypeId, targetCountryId, targetEntity) {
   const ch = getCharacter(state, charId);
   const type = MISSION_TYPES.find(m => m.id === missionTypeId);
   if (!ch || !type) return { ok: false, msg: 'بيانات غير صحيحة' };
@@ -225,46 +239,53 @@ function assignMission(state, charId, missionTypeId, targetCountryId) {
   if (isCharacterBusy(state, charId)) return { ok: false, msg: `${ch.name} مشغول حالياً بمهمة أخرى.` };
 
   const resolvedCountryId = type.autoTargetOwnCountry ? ch.country : (targetCountryId || null);
+  // مهمة موجَّهة صراحة لكيان علاقات بعينه (من تبويب العلاقات) تُقدَّم على الاستهداف التلقائي بالدولة
+  const resolvedTargetEntity = targetEntity || (resolvedCountryId ? { kind: 'country', id: resolvedCountryId } : null);
 
   const resolveAtMonth = state.month + type.duration;
   ch.busyUntil = resolveAtMonth;
-  state.missions.push({ id: 'ms_' + state.month + '_' + charId, charId, typeId: missionTypeId, targetCountryId: resolvedCountryId, resolveAtMonth });
+  state.missions.push({
+    id: 'ms_' + state.month + '_' + charId, charId, typeId: missionTypeId,
+    targetCountryId: resolvedCountryId, targetEntity: resolvedTargetEntity, resolveAtMonth
+  });
   return { ok: true, msg: `أُوفد ${ch.name} في ${type.name}، ستظهر النتيجة خلال ${type.duration} أشهر.` };
 }
 
+// تحسم كل مهمة استحق أوانها وتُرجع مصفوفة نتائج (بدل الاكتفاء بالكتابة الصامتة في السجل) -
+// يستخدمها main.js لعرض نافذة نتيجة صريحة لكل مهمة ضمن تسلسل نوافذ الشهر، لا سطراً مطموراً في السجل فقط
 function resolveMissions(state) {
   const due = state.missions.filter(m => m.resolveAtMonth <= state.month);
+  const results = [];
   due.forEach(m => {
     const ch = getCharacter(state, m.charId);
     const type = MISSION_TYPES.find(t => t.id === m.typeId);
     if (!ch || !type) return;
     ch.busyUntil = 0;
-    let successChance = 45 + (ch.stats.competence - 50) * 0.6 + (ch.stats.loyalty - 50) * 0.2;
-    if (hasTrait(ch, type.boostTrait)) successChance += 20;
-    if (hasTrait(ch, 'negotiator')) successChance += 10;
-    // مكافأة "ملاءمة الدور": سفير يمثل بلده، زعيم قبلي يهدئ منطقته، رجل أعمال يدير ملفاً اقتصادياً - طبيعي أن ينجحوا أكثر
-    if (ch.category === 'foreign' && type.id === 'representation') successChance += 25;
-    if (ch.category === 'tribal' && type.id === 'security') successChance += 15;
-    if (ch.category === 'business' && type.id === 'economic') successChance += 15;
-    successChance = Math.max(10, Math.min(90, successChance));
+    const successChance = computeMissionSuccessChance(ch, type);
     const success = Math.random() * 100 < successChance;
     const magnitude = success ? 3 + Math.random() * 3 : -(1 + Math.random() * 2);
 
-    if (type.effectKey === 'internationalSupport' && m.targetCountryId) {
-      const country = state.relations.countries.find(c => c.id === m.targetCountryId);
-      if (country) country.relation = clampStat(country.relation + magnitude * 2);
+    // توافقاً مع مهام قديمة قد تكون قيد التنفيذ من إصدار سابق للحفظ (بلا targetEntity بعد)
+    const targetEntity = m.targetEntity || (m.targetCountryId ? { kind: 'country', id: m.targetCountryId } : null);
+    let targetName = null;
+    if (targetEntity) {
+      targetName = applyMissionOutcomeToEntity(state, targetEntity, magnitude * (targetEntity.kind === 'country' ? 2 : 1.6));
     }
     state.indicators[type.effectKey] = clampIndicator(type.effectKey, state.indicators[type.effectKey] + magnitude);
     ch.stats.loyalty = clampStat(ch.stats.loyalty + (success ? 3 : -2));
 
-    const countryNote = m.targetCountryId ? ` (${(state.relations.countries.find(c => c.id === m.targetCountryId) || {}).name || ''})` : '';
+    const result = { charId: ch.id, charName: ch.name, typeId: type.id, typeName: type.name, success, magnitude, effectKey: type.effectKey, effectName: INDICATOR_META[type.effectKey].name, targetName };
+    results.push(result);
+
+    const targetNote = targetName ? ` (${targetName})` : '';
     state.eventsLog.push({
       month: state.month, year: state.year, eventId: 'mission_' + m.typeId,
-      title: `نتيجة ${type.name}${countryNote}`,
+      title: `نتيجة ${type.name}${targetNote}`,
       optionLabel: `${ch.name}: ${success ? 'نجحت المهمة وتحسّن ' : 'فشلت المهمة وتراجع '}${INDICATOR_META[type.effectKey].name}.`
     });
   });
   state.missions = state.missions.filter(m => m.resolveAtMonth > state.month);
+  return results;
 }
 
 // ------- تجدد الشخصيات مع الوقت (تقاعد/استبدال) -------

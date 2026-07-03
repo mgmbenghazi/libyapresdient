@@ -414,6 +414,17 @@ canvas.spark { display: block; }
 .rel-group-header:first-child { margin-top: 0; }
 .rel-item .rel-bar { width: 90px; height: 6px; background: #2c3a2a; border-radius: 3px; overflow: hidden; }
 .rel-item .rel-bar-fill { height: 100%; }
+.rel-item-clickable { cursor: pointer; transition: background .15s ease; border: 1px solid transparent; }
+.rel-item-clickable:hover { background: var(--panel-2); border-color: var(--hairline); }
+.rel-cooldown-badge { font-size: .72rem; opacity: .8; }
+
+.active-missions { display: flex; flex-direction: column; gap: 8px; }
+.mission-row { background: var(--panel); border-radius: var(--radius); padding: 10px 14px; }
+.mission-row-main { font-size: .9rem; color: var(--text); margin-bottom: 4px; }
+.mission-row-meta { display: flex; justify-content: space-between; font-size: .78rem; color: var(--text-dim); }
+.mission-chance.good { color: var(--good); }
+.mission-chance.medium { color: var(--medium); }
+.mission-chance.bad { color: var(--bad); }
 
 .cabinet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .cabinet-card { background: var(--panel); border-radius: var(--radius); padding: 12px; border-inline-start: 4px solid #545f4c; }

@@ -236,12 +236,18 @@ function processQueue() {
     processScheduledEffects(s);
     lastTickSummary = monthlyEconomicTick(s);
     monthlyRelationsTick(s);
-    applyCabinetMonthlyEffects(s);
+    const missionResults = applyCabinetMonthlyEffects(s);
     s.history.push(snapshotIndicators(s, lastTickSummary));
     if (s.history.length > 60) s.history.shift();
     const unlocked = checkAchievements(s);
     unlocked.forEach(a => Game.queue.unshift({ type: 'achievement', payload: a }));
+    (missionResults || []).forEach(r => Game.queue.unshift({ type: 'missionResult', payload: r }));
     processQueue();
+    return;
+  }
+
+  if (step.type === 'missionResult') {
+    renderMissionResultModal(step.payload, () => processQueue());
     return;
   }
 
