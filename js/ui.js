@@ -179,8 +179,165 @@ function renderGameScreen() {
   renderCharts();
   renderRegions();
   renderBudgetTab();
+  renderCabinetGrid();
+  renderCharacterFilters();
+  renderCharacterGrid();
   renderRelationsTab();
   renderLogTab();
+}
+
+// ------- تبويب الحكومة والشخصيات -------
+function initials(name) { return name.trim().split(' ').slice(0, 2).map(w => w[0]).join(''); }
+
+function statMiniBar(label, val) {
+  return `<div class="stat-mini"><span>${label}</span><div class="stat-bar"><div class="stat-bar-fill" style="width:${val}%"></div><span></span></div><span>${Math.round(val)}</span></div>`;
+}
+
+function renderCabinetGrid() {
+  const wrap = document.getElementById('cabinet-grid');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  MINISTRIES.forEach(m => {
+    const charId = Game.state.cabinet[m.id];
+    const ch = charId ? getCharacter(Game.state, charId) : null;
+    const card = document.createElement('div');
+    card.className = 'cabinet-card' + (ch ? ' filled' : '');
+    card.innerHTML = `<div class="cab-role">${m.name}</div><div class="cab-holder">${ch ? ch.name : 'شاغر'}</div>
+      <div class="cab-actions">
+        <button class="btn btn-small" data-assign="${m.id}">${ch ? 'استبدال' : 'تعيين'}</button>
+        ${ch ? `<button class="btn btn-small btn-ghost" data-dismiss="${m.id}">إقالة</button>` : ''}
+      </div>`;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll('[data-assign]').forEach(btn => btn.addEventListener('click', () => openAssignModal(btn.dataset.assign)));
+  wrap.querySelectorAll('[data-dismiss]').forEach(btn => btn.addEventListener('click', () => {
+    dismissFromMinistry(Game.state, btn.dataset.dismiss);
+    renderCabinetGrid(); renderCharacterGrid();
+  }));
+}
+
+function renderCharacterFilters() {
+  const wrap = document.getElementById('character-filters');
+  if (!wrap) return;
+  const cats = [{ id: 'all', name: 'الكل' }, ...CHARACTER_CATEGORIES];
+  wrap.innerHTML = cats.map(c => `<button class="char-filter-btn ${((Game.charFilter || 'all') === c.id) ? 'active' : ''}" data-cat="${c.id}">${c.name}</button>`).join('');
+  wrap.querySelectorAll('.char-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => { Game.charFilter = btn.dataset.cat; renderCharacterFilters(); renderCharacterGrid(); });
+  });
+}
+
+function renderCharacterGrid() {
+  const wrap = document.getElementById('character-grid');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const filter = Game.charFilter || 'all';
+  const list = Game.state.characters.filter(c => filter === 'all' || c.category === filter);
+  list.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = 'option-card char-card';
+    card.innerHTML = `<div class="char-avatar">${initials(ch.name)}</div>
+      <h3>${ch.name}</h3>
+      <div class="char-role">${ch.role}</div>
+      ${statMiniBar('الولاء', ch.stats.loyalty)}
+      ${statMiniBar('الشعبية', ch.stats.popularity)}
+      ${statMiniBar('الكفاءة', ch.stats.competence)}`;
+    card.addEventListener('click', () => openCharacterModal(ch.id));
+    wrap.appendChild(card);
+  });
+}
+
+function characterModalHtml(ch) {
+  const traitsHtml = (ch.traits || []).map(t => `<span class="trait-chip">${TRAITS[t] ? TRAITS[t].name : t}</span>`).join('');
+  return `
+    <span class="modal-tag">${CHARACTER_CATEGORIES.find(c => c.id === ch.category) ? CHARACTER_CATEGORIES.find(c => c.id === ch.category).name : ''}</span>
+    <div class="char-modal-header">
+      <div class="char-avatar-lg">${initials(ch.name)}</div>
+      <div><h2 style="margin:0">${ch.name}</h2><div class="char-role">${ch.role}</div></div>
+    </div>
+    <p class="modal-desc">${ch.bio}</p>
+    <div>${traitsHtml || '<span class="hint">لا توجد سمات خاصة</span>'}</div>
+    <div class="char-stats-grid">
+      ${statMiniBar('الولاء', ch.stats.loyalty)}
+      ${statMiniBar('الكفاءة', ch.stats.competence)}
+      ${statMiniBar('الشعبية', ch.stats.popularity)}
+      ${statMiniBar('النفوذ', ch.stats.influence)}
+      ${statMiniBar('الطموح', ch.stats.ambition)}
+      ${statMiniBar('الفساد', ch.stats.corruption)}
+    </div>
+    <div id="char-opinion-slot"></div>
+    <div class="char-actions-row">
+      <button class="btn" id="act-consult">استشارة</button>
+      <button class="btn" id="act-reward">مكافأة (${REWARD_COST} مليون د.ل)</button>
+      <button class="btn btn-ghost" id="act-punish">عقاب</button>
+      ${ch.category === 'government' || !ch.ministry ? `<button class="btn btn-primary" id="act-appoint">تعيين وزارياً</button>` : ''}
+      ${ch.ministry ? `<button class="btn btn-ghost" id="act-dismiss">إقالة من المنصب</button>` : ''}
+    </div>`;
+}
+
+function openCharacterModal(charId) {
+  const ch = getCharacter(Game.state, charId);
+  if (!ch) return;
+  showModal(characterModalHtml(ch));
+  bindCharacterModalActions(charId);
+}
+
+function bindCharacterModalActions(charId) {
+  const ch = getCharacter(Game.state, charId);
+  document.getElementById('act-consult').addEventListener('click', () => {
+    const opinion = consultCharacter(Game.state, charId);
+    refreshCharModal(charId, `<div class="opinion-box">${opinion}</div>`);
+  });
+  document.getElementById('act-reward').addEventListener('click', () => {
+    const res = rewardCharacter(Game.state, charId);
+    refreshCharModal(charId, `<div class="opinion-box">${res.msg}</div>`);
+  });
+  document.getElementById('act-punish').addEventListener('click', () => {
+    const res = punishCharacter(Game.state, charId);
+    refreshCharModal(charId, `<div class="opinion-box">${res.msg}</div>`);
+  });
+  const appointBtn = document.getElementById('act-appoint');
+  if (appointBtn) appointBtn.addEventListener('click', () => { hideModal(); openAssignModal(null, charId); });
+  const dismissBtn = document.getElementById('act-dismiss');
+  if (dismissBtn) dismissBtn.addEventListener('click', () => {
+    dismissFromMinistry(Game.state, ch.ministry);
+    hideModal();
+    renderCabinetGrid(); renderCharacterGrid();
+  });
+}
+
+function refreshCharModal(charId, opinionHtml) {
+  const ch = getCharacter(Game.state, charId);
+  document.getElementById('modal-box').innerHTML = characterModalHtml(ch);
+  if (opinionHtml) document.getElementById('char-opinion-slot').innerHTML = opinionHtml;
+  bindCharacterModalActions(charId);
+  renderCabinetGrid(); renderCharacterGrid(); renderIndicatorCards();
+}
+
+function openAssignModal(ministryId, preselectedCharId) {
+  const eligible = Game.state.characters.filter(c => c.category !== 'foreign');
+  const html = `
+    <span class="modal-tag">تعيين وزاري</span>
+    <h2>${ministryId ? 'اختر شخصية لمنصب ' + MINISTRIES.find(m => m.id === ministryId).name : 'اختر المنصب الوزاري لـ ' + getCharacter(Game.state, preselectedCharId).name}</h2>
+    <div class="decision-options" style="max-height:50vh;overflow-y:auto">
+      ${ministryId
+        ? eligible.map(c => `<div class="decision-option" data-char="${c.id}"><div class="opt-label">${c.name}</div><div class="opt-advisor">${c.role} - الكفاءة: ${c.stats.competence} / الفساد: ${c.stats.corruption}</div></div>`).join('')
+        : MINISTRIES.map(m => `<div class="decision-option" data-ministry="${m.id}"><div class="opt-label">${m.name}</div><div class="opt-advisor">${Game.state.cabinet[m.id] ? 'مشغول حالياً بـ ' + getCharacter(Game.state, Game.state.cabinet[m.id]).name : 'شاغر'}</div></div>`).join('')}
+    </div>`;
+  showModal(html);
+  document.querySelectorAll('[data-char]').forEach(el => {
+    el.addEventListener('click', () => {
+      appointToMinistry(Game.state, el.dataset.char, ministryId);
+      hideModal();
+      renderCabinetGrid(); renderCharacterGrid();
+    });
+  });
+  document.querySelectorAll('[data-ministry]').forEach(el => {
+    el.addEventListener('click', () => {
+      appointToMinistry(Game.state, preselectedCharId, el.dataset.ministry);
+      hideModal();
+      renderCabinetGrid(); renderCharacterGrid();
+    });
+  });
 }
 
 function renderEndScreen(result) {

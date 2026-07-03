@@ -29,6 +29,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
       countries: ALL_COUNTRIES.map(c => ({ ...c })),
       orgs: ORGANIZATIONS.map(o => ({ ...o }))
     },
+    ...initCharacterState(),
     scheduledEffects: [], // {applyAtMonth, effects}
     decisionCooldowns: {}, // id -> month usable again
     decisionsUsed: [], // oneTime ids used

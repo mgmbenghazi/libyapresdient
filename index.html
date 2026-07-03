@@ -75,6 +75,7 @@
     <nav class="tabbar">
       <button class="tab-btn active" data-tab="dashboard">لوحة المؤشرات</button>
       <button class="tab-btn" data-tab="budget">الميزانية</button>
+      <button class="tab-btn" data-tab="characters">الحكومة والشخصيات</button>
       <button class="tab-btn" data-tab="relations">العلاقات</button>
       <button class="tab-btn" data-tab="log">السجل</button>
     </nav>
@@ -102,6 +103,17 @@
       <p class="hint">اسحب الأشرطة لتعديل نسبة كل قطاع من الإنفاق. التوزيع الجيد يحسّن مؤشرات القطاعات، والإهمال يضر بها.</p>
       <div id="budget-sliders"></div>
       <div id="budget-summary" class="budget-summary"></div>
+    </div>
+
+    <!-- تبويب الحكومة والشخصيات -->
+    <div id="tab-characters" class="tab-panel">
+      <h3>مجلس الوزراء</h3>
+      <p class="hint">عيّن شخصيات في المناصب الوزارية. تؤثر كفاءة الوزير وفساده مباشرة على أداء قطاعه، والمنصب الشاغر يضر بمؤشره تدريجياً.</p>
+      <div id="cabinet-grid" class="cabinet-grid"></div>
+
+      <h3 style="margin-top:28px">الشخصيات المؤثرة</h3>
+      <div id="character-filters" class="char-filters"></div>
+      <div id="character-grid" class="card-grid small"></div>
     </div>
 
     <!-- تبويب العلاقات -->
@@ -159,11 +171,13 @@
 <script src="js/data/decisions.js"></script>
 <script src="js/data/events.js"></script>
 <script src="js/data/relations.js"></script>
+<script src="js/data/characters.js"></script>
 <script src="js/state.js"></script>
 <script src="js/systems/economy.js"></script>
 <script src="js/systems/decisions.js"></script>
 <script src="js/systems/events.js"></script>
 <script src="js/systems/relations.js"></script>
+<script src="js/systems/characters.js"></script>
 <script src="js/systems/gameover.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ui.js"></script>

@@ -158,6 +158,7 @@ function processQueue() {
     processScheduledEffects(s);
     lastTickSummary = monthlyEconomicTick(s);
     monthlyRelationsTick(s);
+    applyCabinetMonthlyEffects(s);
     s.history.push(snapshotIndicators(s));
     if (s.history.length > 60) s.history.shift();
     processQueue();
