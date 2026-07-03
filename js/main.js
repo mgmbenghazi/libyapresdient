@@ -13,10 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEndScreen();
   bindBackButtons();
   bindThemeToggle();
+  bindSoundToggle();
+  bindGlobalClickSound();
 
   const saved = loadGame();
   document.getElementById('btn-continue').disabled = !saved;
 });
+
+function applyMuteIcon() {
+  const icon = Sound.muted ? '🔇' : '🔊';
+  const t1 = document.getElementById('btn-sound-toggle');
+  const t2 = document.getElementById('btn-sound-toggle-start');
+  if (t1) t1.textContent = icon;
+  if (t2) t2.textContent = icon + ' الصوت';
+}
+
+function bindSoundToggle() {
+  applyMuteIcon();
+  function toggle() { toggleMute(); applyMuteIcon(); }
+  document.getElementById('btn-sound-toggle').addEventListener('click', toggle);
+  document.getElementById('btn-sound-toggle-start').addEventListener('click', toggle);
+}
+
+function bindGlobalClickSound() {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.btn, .decision-option, .option-card, .tab-btn, .char-filter-btn')) {
+      playClick();
+    }
+  });
+}
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);

@@ -24,6 +24,7 @@
         <button id="btn-continue" class="btn">استكمال اللعبة المحفوظة</button>
         <button id="btn-how-to-play" class="btn btn-ghost">كيف ألعب؟</button>
         <button id="btn-theme-toggle-start" class="btn btn-ghost theme-toggle">🌙 الوضع الليلي/النهاري</button>
+        <button id="btn-sound-toggle-start" class="btn btn-ghost theme-toggle">🔊 الصوت</button>
       </div>
     </div>
   </div>
@@ -81,6 +82,7 @@
       <button class="tab-btn" data-tab="log">السجل</button>
     </nav>
     <div class="topbar-right">
+      <button id="btn-sound-toggle" class="btn btn-small btn-ghost">🔊</button>
       <button id="btn-theme-toggle" class="btn btn-small btn-ghost">🌙</button>
       <button id="btn-save" class="btn btn-small">حفظ</button>
       <button id="btn-next-month" class="btn btn-primary btn-small">الشهر التالي ⟵</button>
@@ -95,6 +97,19 @@
         <div class="chart-box"><h3>رضا الشعب</h3><canvas id="chart-satisfaction"></canvas></div>
         <div class="chart-box"><h3>الاقتصاد (النمو %)</h3><canvas id="chart-growth"></canvas></div>
         <div class="chart-box"><h3>إنتاج النفط</h3><canvas id="chart-oil"></canvas></div>
+        <div class="chart-box"><h3>الميزان التجاري</h3><canvas id="chart-trade"></canvas></div>
+      </div>
+      <h3 style="margin-top:10px">خريطة ليبيا التفاعلية</h3>
+      <p class="hint">انقر على أي منطقة لعرض تفاصيلها. اللون يعكس متوسط ولاء القبائل والشخصيات في المنطقة.</p>
+      <div class="map-wrap">
+        <svg id="libya-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+          <path id="map-west" class="map-region" data-region="west" d="M20,40 L190,30 L200,170 L120,270 L30,220 Z"></path>
+          <path id="map-east" class="map-region" data-region="east" d="M200,30 L380,50 L370,210 L260,260 L200,170 Z"></path>
+          <path id="map-south" class="map-region" data-region="south" d="M30,220 L120,270 L200,170 L260,260 L200,290 L60,280 Z"></path>
+          <text x="90" y="140" class="map-label">الغرب</text>
+          <text x="290" y="140" class="map-label">الشرق</text>
+          <text x="150" y="255" class="map-label">الجنوب</text>
+        </svg>
       </div>
       <div class="regions-row" id="regions-row"></div>
     </div>
@@ -181,6 +196,7 @@
 <script src="js/systems/relations.js"></script>
 <script src="js/systems/characters.js"></script>
 <script src="js/systems/achievements.js"></script>
+<script src="js/systems/sound.js"></script>
 <script src="js/systems/gameover.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ui.js"></script>

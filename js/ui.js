@@ -126,6 +126,14 @@ function renderCharts() {
   drawLineChart(document.getElementById('chart-satisfaction'), hist.map(h => h.satisfaction), { color: '#3fbf5e', min: 0, max: 100 });
   drawLineChart(document.getElementById('chart-growth'), hist.map(h => h.gdpGrowth), { color: '#C9A227' });
   drawLineChart(document.getElementById('chart-oil'), hist.map(h => h.oilProduction), { color: '#4aa8e0' });
+  drawLineChart(document.getElementById('chart-trade'), hist.map(h => h.tradeBalance), { color: '#e07a4a' });
+}
+
+function regionAverageLoyalty(state, regionId) {
+  const tribesInRegion = state.relations.tribes.filter(t => t.region === regionId);
+  const charsInRegion = state.characters.filter(c => c.region === regionId);
+  const values = [...tribesInRegion.map(t => t.loyalty), ...charsInRegion.map(c => c.stats.loyalty)];
+  return values.length ? values.reduce((a, v) => a + v, 0) / values.length : 50;
 }
 
 function renderRegions() {
@@ -133,13 +141,44 @@ function renderRegions() {
   const wrap = document.getElementById('regions-row');
   wrap.innerHTML = '';
   REGIONS.forEach(r => {
-    const tribesInRegion = s.relations.tribes.filter(t => t.region === r.id);
-    const avgLoyalty = tribesInRegion.length ? tribesInRegion.reduce((a, t) => a + t.loyalty, 0) / tribesInRegion.length : 50;
+    const avgLoyalty = regionAverageLoyalty(s, r.id);
     const div = document.createElement('div');
     div.className = 'region-card';
     div.innerHTML = `<div class="rname">${r.name}</div><div class="region-bar"><div class="region-bar-fill" style="width:${avgLoyalty}%"></div></div><div style="margin-top:4px;font-size:.8rem;color:var(--text-dim)">الولاء: ${fmtNum(avgLoyalty, 0)}%</div>`;
     wrap.appendChild(div);
   });
+  renderLibyaMap();
+}
+
+function renderLibyaMap() {
+  const s = Game.state;
+  REGIONS.forEach(r => {
+    const el = document.getElementById('map-' + r.id);
+    if (!el) return;
+    const avgLoyalty = regionAverageLoyalty(s, r.id);
+    el.classList.remove('good', 'medium', 'bad');
+    el.classList.add(indicatorColor('satisfaction', avgLoyalty));
+    el.onclick = () => openRegionModal(r.id);
+  });
+}
+
+function openRegionModal(regionId) {
+  const s = Game.state;
+  const region = REGIONS.find(r => r.id === regionId);
+  const avgLoyalty = regionAverageLoyalty(s, regionId);
+  const tribesInRegion = s.relations.tribes.filter(t => t.region === regionId);
+  const charsInRegion = s.characters.filter(c => c.region === regionId);
+  const html = `
+    <span class="modal-tag">منطقة</span>
+    <h2>${region.name}</h2>
+    <div class="char-stats-grid">${statMiniBar('متوسط الولاء', avgLoyalty)}</div>
+    <div class="field-label" style="margin-top:14px">القبائل في المنطقة</div>
+    <div class="effect-preview">${tribesInRegion.map(t => `<span class="effect-chip ${indicatorColor('satisfaction', t.loyalty) === 'bad' ? 'chip-bad' : 'chip-good'}">${t.name} (${Math.round(t.loyalty)})</span>`).join('') || '<span class="hint">لا توجد قبائل مسجلة</span>'}</div>
+    <div class="field-label" style="margin-top:14px">شخصيات مؤثرة من المنطقة</div>
+    <div class="effect-preview">${charsInRegion.map(c => `<span class="trait-chip">${c.name} - ${c.role}</span>`).join('') || '<span class="hint">لا توجد شخصيات مسجلة</span>'}</div>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">إغلاق</button></div>`;
+  showModal(html);
+  document.getElementById('modal-continue').addEventListener('click', hideModal);
 }
 
 function renderBudgetTab() {
@@ -180,22 +219,40 @@ function relColor(v) { return v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--medium)
 
 function renderRelationsTab() {
   const s = Game.state;
-  function fillList(elId, items, nameKey, valKey) {
+  function fillList(elId, items, nameKey, valKey, flagMap) {
     const wrap = document.getElementById(elId);
     wrap.innerHTML = '';
     items.forEach(it => {
       const v = it[valKey];
+      const flag = flagMap && flagMap[it.id] ? flagMap[it.id] + ' ' : '';
       const row = document.createElement('div');
       row.className = 'rel-item';
-      row.innerHTML = `<span>${it[nameKey]}</span><div class="rel-bar"><div class="rel-bar-fill" style="width:${v}%;background:${relColor(v)}"></div></div>`;
+      row.innerHTML = `<span>${flag}${it[nameKey]}</span><div class="rel-bar"><div class="rel-bar-fill" style="width:${v}%;background:${relColor(v)}"></div></div>`;
       wrap.appendChild(row);
     });
   }
   fillList('rel-tribes', s.relations.tribes, 'name', 'loyalty');
   fillList('rel-parties', s.relations.parties, 'name', 'support');
   fillList('rel-institutions', s.relations.institutions, 'name', 'legitimacy');
-  fillList('rel-countries', s.relations.countries, 'name', 'relation');
   fillList('rel-orgs', s.relations.orgs, 'name', 'relation');
+
+  const countriesWrap = document.getElementById('rel-countries');
+  countriesWrap.innerHTML = '';
+  COUNTRY_GROUPS.forEach(g => {
+    const items = s.relations.countries.filter(c => c.group === g.id);
+    if (!items.length) return;
+    const header = document.createElement('div');
+    header.className = 'rel-group-header';
+    header.textContent = g.name;
+    countriesWrap.appendChild(header);
+    items.forEach(it => {
+      const flag = COUNTRY_FLAGS[it.id] ? COUNTRY_FLAGS[it.id] + ' ' : '';
+      const row = document.createElement('div');
+      row.className = 'rel-item';
+      row.innerHTML = `<span>${flag}${it.name}</span><div class="rel-bar"><div class="rel-bar-fill" style="width:${it.relation}%;background:${relColor(it.relation)}"></div></div>`;
+      countriesWrap.appendChild(row);
+    });
+  });
 }
 
 function renderLogTab() {
@@ -460,6 +517,7 @@ function renderEndScreen(result) {
   const s = Game.state;
   document.getElementById('end-title').textContent = getTitle(s, result.reason);
   document.getElementById('end-reason').textContent = result.title;
+  if (result.reason === 'completed' && computeFinalScore(s) >= 50) playGameOverGood(); else playGameOverBad();
   const indWrap = document.getElementById('end-indicators');
   indWrap.innerHTML = '';
   ['satisfaction', 'politicalStability', 'internationalSupport', 'economicDevelopment', 'security', 'poverty', 'unemployment', 'gdpGrowth'].forEach(key => {
@@ -556,10 +614,12 @@ function renderDecisionModal(decision, onChoose) {
         </div>`).join('')}
     </div>`;
   showModal(html, isCrisis);
+  if (isCrisis) playCrisisAlert();
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
       const idx = Number(el.dataset.idx);
       hideModal();
+      playDecisionResolve();
       onChoose(idx);
     });
   });
@@ -583,10 +643,12 @@ function renderEventModal(event, onChoose) {
         </div>`).join('')}
     </div>`;
   showModal(html, isCrisis);
+  if (isCrisis) playCrisisAlert();
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
       const idx = Number(el.dataset.idx);
       hideModal();
+      playDecisionResolve();
       onChoose(idx);
     });
   });
@@ -599,6 +661,7 @@ function renderAchievementModal(achievement, onClose) {
     <p class="modal-desc">${achievement.desc}</p>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">رائع!</button></div>`;
   showModal(html);
+  playAchievement();
   document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
 }
 

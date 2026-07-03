@@ -53,3 +53,14 @@ const ORGANIZATIONS = [
 ];
 
 const ALL_COUNTRIES = [...NEIGHBOR_COUNTRIES, ...REGIONAL_COUNTRIES, ...GLOBAL_POWERS];
+
+const COUNTRY_FLAGS = {
+  egypt: '🇪🇬', tunisia: '🇹🇳', algeria: '🇩🇿', chad: '🇹🇩', niger: '🇳🇪', sudan: '🇸🇩',
+  gulf: '🇸🇦', turkey: '🇹🇷', italy: '🇮🇹', usa: '🇺🇸', eu: '🇪🇺', russia: '🇷🇺', china: '🇨🇳'
+};
+
+const COUNTRY_GROUPS = [
+  { id: 'neighbor', name: 'دول الجوار' },
+  { id: 'regional', name: 'دول إقليمية وشركاء' },
+  { id: 'global', name: 'القوى العالمية' }
+];
