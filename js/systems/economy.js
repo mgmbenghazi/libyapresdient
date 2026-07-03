@@ -1,6 +1,32 @@
 // المحرك الاقتصادي - يُحسب مرة كل شهر لعبة
 function rnd(min, max) { return Math.random() * (max - min) + min; }
 
+// تقدير الإيرادات الشهرية بناءً على الحالة الراهنة - دالة نقية بلا أي تعديل على الحالة
+// تُستخدم لعرض معاينة حية في تبويب الميزانية، وأيضاً من داخل monthlyEconomicTick نفسها لضمان تطابق المعاينة مع الواقع
+function estimateMonthlyRevenue(state) {
+  const ind = state.indicators;
+  const oilPriceFactor = state.economy.oilPrice / 100;
+  const oilRevenue = ind.oilProduction * 30 * oilPriceFactor * 0.9;
+  const nonOilBoost = 1 + ((ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3) / 200;
+  const taxRevenue = (ind.economicDevelopment * 25) * (1 - ind.unemployment / 150) * nonOilBoost;
+  return { oilRevenue, taxRevenue, totalRevenue: oilRevenue + taxRevenue };
+}
+
+// تقدير كامل للميزانية الشهرية: كل شريحة تمثل نسبتها المئوية مباشرة من الإيرادات المتوقعة -
+// فمجموع 100% يعني ميزانية متوازنة تماماً (إنفاق = إيراد)، وما دون ذلك فائض وما فوقه عجز.
+// هذا هو المصدر الوحيد لحساب الإنفاق، مستخدم من المعاينة الحية في الواجهة ومن الدورة الشهرية الفعلية معاً.
+function estimateBudget(state) {
+  const revenue = estimateMonthlyRevenue(state);
+  const alloc = state.budget.allocations;
+  const totalAllocPct = Object.values(alloc).reduce((a, b) => a + b, 0);
+  const spendBySector = {};
+  Object.keys(alloc).forEach(key => {
+    spendBySector[key] = revenue.totalRevenue * (alloc[key] / 100);
+  });
+  const totalExpenditure = Object.values(spendBySector).reduce((a, b) => a + b, 0);
+  return { ...revenue, totalAllocPct, spendBySector, totalExpenditure, balance: revenue.totalRevenue - totalExpenditure };
+}
+
 function monthlyEconomicTick(state) {
   const ind = state.indicators;
   const eco = state.economy;
@@ -10,21 +36,10 @@ function monthlyEconomicTick(state) {
   eco.oilPrice = Math.max(30, Math.min(200, eco.oilPrice + rnd(-6, 6)));
   const oilPriceFactor = eco.oilPrice / 100;
 
-  // 2) إيرادات النفط (مليون د.ل شهرياً) بناءً على الإنتاج (ألف برميل/يوم) والسعر
-  const oilRevenue = ind.oilProduction * 30 * oilPriceFactor * 0.9;
-  // 3) إيرادات ضريبية بناءً على التنمية الاقتصادية والنشاط الاقتصادي والقطاعات غير النفطية
-  const nonOilBoost = 1 + ((ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3) / 200;
-  const taxRevenue = (ind.economicDevelopment * 25) * (1 - ind.unemployment / 150) * nonOilBoost;
-  const totalRevenue = oilRevenue + taxRevenue;
-
-  // 4) الإنفاق يعتمد على توزيع الميزانية كنسب من إجمالي إنفاق مستهدف
-  const totalAllocPct = Object.values(alloc).reduce((a, b) => a + b, 0) || 1;
-  const targetSpend = totalRevenue * 1.05; // ميل طبيعي للإنفاق قريباً من الإيرادات
-  const spendBySector = {};
-  Object.keys(alloc).forEach(key => {
-    spendBySector[key] = targetSpend * (alloc[key] / totalAllocPct);
-  });
-  const totalExpenditure = Object.values(spendBySector).reduce((a, b) => a + b, 0);
+  // 2+3+4) الإيرادات والإنفاق - كل شريحة ميزانية تُحسب كنسبة مباشرة من الإيرادات الفعلية،
+  // بحيث يعكس تعديل الأشرطة فعلياً حجم الإنفاق الكلي (لا مجرد إعادة توزيع لمجموع ثابت)
+  const budget = estimateBudget(state);
+  const { oilRevenue, taxRevenue, totalRevenue, totalExpenditure } = budget;
 
   const monthlyBalance = totalRevenue - totalExpenditure; // مليون د.ل
   ind.treasury += monthlyBalance;

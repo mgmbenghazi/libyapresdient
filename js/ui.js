@@ -202,17 +202,84 @@ function renderBudgetTab() {
       renderBudgetSummary();
     });
   });
+  bindBudgetPresets();
   renderBudgetSummary();
+  renderRevenueExpenditureChart();
+}
+
+function applyBudgetPreset(targetTotal) {
+  const s = Game.state;
+  const keys = Object.keys(s.budget.allocations);
+  const currentTotal = keys.reduce((a, k) => a + s.budget.allocations[k], 0) || 1;
+  const scale = targetTotal / currentTotal;
+  keys.forEach(k => {
+    s.budget.allocations[k] = Math.max(2, Math.min(35, Math.round(s.budget.allocations[k] * scale)));
+  });
+  renderBudgetTab();
+}
+
+function bindBudgetPresets() {
+  const balanced = document.getElementById('preset-balanced');
+  const austerity = document.getElementById('preset-austerity');
+  const expansion = document.getElementById('preset-expansion');
+  if (balanced) balanced.onclick = () => {
+    Game.state.budget.allocations = { education: 15, health: 15, security: 15, infrastructure: 15, subsidies: 15, salaries: 15, debtService: 5, economicDev: 5 };
+    renderBudgetTab();
+  };
+  if (austerity) austerity.onclick = () => applyBudgetPreset(85);
+  if (expansion) expansion.onclick = () => applyBudgetPreset(115);
 }
 
 function renderBudgetSummary() {
   const s = Game.state;
-  const total = Object.values(s.budget.allocations).reduce((a, b) => a + b, 0);
+  const budget = estimateBudget(s);
   const wrap = document.getElementById('budget-summary');
   wrap.innerHTML = `
-    <div>إجمالي النسب: <b>${total}%</b> (يُعاد توزيعها تناسبياً تلقائياً)</div>
     <div>الخزينة العامة: <b>${fmtNum(s.indicators.treasury, 0)}</b> مليون د.ل</div>
-    <div>سعر النفط الحالي: <b>${fmtNum(s.economy.oilPrice, 0)}</b> (مؤشر نسبي)</div>`;
+    <div>سعر النفط الحالي: <b>${fmtNum(s.economy.oilPrice, 0)}</b> (مؤشر نسبي)</div>
+    <div>إيرادات النفط المتوقعة: <b>${fmtNum(budget.oilRevenue, 0)}</b> مليون د.ل</div>
+    <div>الإيرادات الضريبية المتوقعة: <b>${fmtNum(budget.taxRevenue, 0)}</b> مليون د.ل</div>`;
+  renderBudgetLiveSummary(budget);
+}
+
+function renderBudgetLiveSummary(budget) {
+  const wrap = document.getElementById('budget-live-summary');
+  if (!wrap) return;
+  const totalPct = budget.totalAllocPct;
+  let statusClass = 'good', statusLabel = 'ميزانية متوازنة';
+  if (totalPct > 130 || totalPct < 60) { statusClass = 'bad'; statusLabel = totalPct > 100 ? 'عجز كبير جداً' : 'فائض كبير جداً'; }
+  else if (totalPct > 108) { statusClass = 'medium'; statusLabel = 'عجز'; }
+  else if (totalPct < 92) { statusClass = 'medium'; statusLabel = 'فائض'; }
+
+  const balanceClass = budget.balance >= 0 ? 'good' : (budget.balance > -budget.totalRevenue * 0.15 ? 'medium' : 'bad');
+
+  wrap.innerHTML = `
+    <div class="budget-live-card">
+      <div class="blc-item">
+        <div class="blc-label">إجمالي التخصيص</div>
+        <div class="blc-value ${statusClass}">${fmtNum(totalPct, 0)}%</div>
+        <div class="blc-tag ${statusClass}">${statusLabel}</div>
+      </div>
+      <div class="blc-item">
+        <div class="blc-label">الإيرادات المتوقعة / شهر</div>
+        <div class="blc-value">${fmtNum(budget.totalRevenue, 0)}</div>
+      </div>
+      <div class="blc-item">
+        <div class="blc-label">النفقات المتوقعة / شهر</div>
+        <div class="blc-value">${fmtNum(budget.totalExpenditure, 0)}</div>
+      </div>
+      <div class="blc-item">
+        <div class="blc-label">الرصيد الشهري المتوقع</div>
+        <div class="blc-value ${balanceClass}">${budget.balance >= 0 ? '+' : ''}${fmtNum(budget.balance, 0)}</div>
+      </div>
+    </div>`;
+}
+
+function renderRevenueExpenditureChart() {
+  const canvas = document.getElementById('chart-revenue-expenditure');
+  if (!canvas) return;
+  const hist = Game.state.history;
+  drawDualLineChart(canvas, hist.map(h => h.totalRevenue || 0), hist.map(h => h.totalExpenditure || 0), '#3fbf5e', '#e5484d');
 }
 
 function relColor(v) { return v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--medium)' : 'var(--bad)'; }
@@ -430,25 +497,32 @@ function bindCharacterModalActions(charId) {
 
 function openMissionModal(charId) {
   const ch = getCharacter(Game.state, charId);
+  const eligibleTypes = missionTypesForCharacter(ch);
+  const ownCountryName = ch.country ? (Game.state.relations.countries.find(c => c.id === ch.country) || {}).name : null;
+
+  const optionsHtml = eligibleTypes.length
+    ? eligibleTypes.map(t => `
+        <div class="decision-option" data-mission="${t.id}">
+          <div class="opt-label">${t.name}</div>
+          <div class="opt-advisor">${t.desc}${t.autoTargetOwnCountry && ownCountryName ? ` سيمثل بلده (${ownCountryName}) تلقائياً دون الحاجة لاختيار هدف.` : ''}</div>
+        </div>`).join('')
+    : `<p class="hint">لا توجد مهام مناسبة لدور ${ch.name} حالياً.</p>`;
+
   const html = `
     <span class="modal-tag">تكليف بمهمة</span>
     <h2>اختر نوع المهمة لـ ${ch.name}</h2>
-    <div class="decision-options">
-      ${MISSION_TYPES.map(t => `
-        <div class="decision-option" data-mission="${t.id}">
-          <div class="opt-label">${t.name}</div>
-          <div class="opt-advisor">تستغرق ${t.duration} أشهر، تؤثر على ${INDICATOR_META[t.effectKey].name}${t.requiresCountry ? ' تجاه دولة محددة' : ''}.</div>
-        </div>`).join('')}
-    </div>`;
+    <div class="decision-options">${optionsHtml}</div>
+    <div class="nav-row"><button class="btn btn-ghost" id="modal-cancel">إلغاء</button></div>`;
   showModal(html);
+  document.getElementById('modal-cancel').addEventListener('click', hideModal);
   document.querySelectorAll('[data-mission]').forEach(el => {
     el.addEventListener('click', () => {
       const type = MISSION_TYPES.find(t => t.id === el.dataset.mission);
-      if (type.requiresCountry) {
+      if (type.requiresCountry && !type.autoTargetOwnCountry) {
         hideModal();
         openMissionCountryModal(charId, type.id);
       } else {
-        const res = assignMission(Game.state, charId, type.id);
+        assignMission(Game.state, charId, type.id);
         hideModal();
         renderCharacterGrid();
       }
@@ -480,7 +554,7 @@ function openMissionCountryModal(charId, missionTypeId) {
 
 function refreshCharModal(charId, opinionHtml) {
   const ch = getCharacter(Game.state, charId);
-  document.getElementById('modal-box').innerHTML = characterModalHtml(ch);
+  showModal(characterModalHtml(ch));
   if (opinionHtml) document.getElementById('char-opinion-slot').innerHTML = opinionHtml;
   bindCharacterModalActions(charId);
   renderCabinetGrid(); renderCharacterGrid(); renderIndicatorCards();
@@ -544,15 +618,27 @@ function renderEndScreen(result) {
 }
 
 // ------- نوافذ منبثقة -------
-function showModal(html, isCrisis) {
+// opts: { crisis: bool, dismissible: bool (افتراضي true), onDismiss: fn }
+// القرارات والأحداث تُمرَّر بـ dismissible:false لأنها تتطلب اختياراً لإكمال الشهر،
+// أما كل النوافذ الإدارية الأخرى (تعيين وزير، مهام، تفاصيل شخصية...) فقابلة للإغلاق دائماً دون اتخاذ أي إجراء
+function showModal(html, opts) {
+  opts = opts || {};
+  const dismissible = opts.dismissible !== false;
+  Game.modalDismiss = dismissible ? (opts.onDismiss || hideModal) : null;
+
   const box = document.getElementById('modal-box');
-  box.innerHTML = html;
-  box.classList.toggle('crisis-modal', !!isCrisis);
+  const closeBtn = dismissible ? '<button type="button" class="modal-close-x" id="modal-close-x" aria-label="إغلاق">✕</button>' : '';
+  box.innerHTML = closeBtn + html;
+  box.classList.toggle('crisis-modal', !!opts.crisis);
   const overlay = document.getElementById('modal-overlay');
   overlay.classList.add('active');
+  if (dismissible) {
+    document.getElementById('modal-close-x').addEventListener('click', () => Game.modalDismiss());
+  }
 }
 function hideModal() {
   document.getElementById('modal-overlay').classList.remove('active');
+  Game.modalDismiss = null;
 }
 
 function renderReportModal(summary, onClose) {
@@ -580,8 +666,9 @@ function renderReportModal(summary, onClose) {
       <div class="r-item"><span>الدين العام</span>${deltaSpan('publicDebt')}</div>
     </div>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
-  showModal(html);
-  document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
+  const dismiss = () => { hideModal(); onClose(); };
+  showModal(html, { onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 
 function effectPreviewHtml(effects) {
@@ -613,7 +700,7 @@ function renderDecisionModal(decision, onChoose) {
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
-  showModal(html, isCrisis);
+  showModal(html, { crisis: isCrisis, dismissible: false });
   if (isCrisis) playCrisisAlert();
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
@@ -642,7 +729,7 @@ function renderEventModal(event, onChoose) {
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
-  showModal(html, isCrisis);
+  showModal(html, { crisis: isCrisis, dismissible: false });
   if (isCrisis) playCrisisAlert();
   document.querySelectorAll('.decision-option').forEach(el => {
     el.addEventListener('click', () => {
@@ -660,9 +747,10 @@ function renderAchievementModal(achievement, onClose) {
     <h2>${achievement.name}</h2>
     <p class="modal-desc">${achievement.desc}</p>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">رائع!</button></div>`;
-  showModal(html);
+  const dismiss = () => { hideModal(); onClose(); };
+  showModal(html, { onDismiss: dismiss });
   playAchievement();
-  document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 
 function showCorruptSaveModal(reason) {
@@ -691,6 +779,7 @@ function renderYearStartModal(onContinue) {
     <h2>مطلع السنة ${s.year} - خطاب الدولة السنوي</h2>
     <p class="modal-desc">سيادة الرئيس، حان وقت مراجعة توزيع الميزانية العامة للسنة القادمة قبل المتابعة. توجه إلى تبويب "الميزانية" لضبط التوزيع إن رغبت، ثم اضغط متابعة.</p>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة إلى السنة الجديدة</button></div>`;
-  showModal(html);
-  document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onContinue(); });
+  const dismiss = () => { hideModal(); onContinue(); };
+  showModal(html, { onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
 }

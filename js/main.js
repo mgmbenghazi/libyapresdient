@@ -3,7 +3,8 @@ const Game = {
   state: null,
   selectedScenario: null,
   selectedBackground: null,
-  queue: []
+  queue: [],
+  modalDismiss: null // الدالة التي تُستدعى لإغلاق النافذة المنبثقة الحالية (null إن كانت تتطلب اختياراً إجبارياً)
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,9 +16,23 @@ document.addEventListener('DOMContentLoaded', () => {
   bindThemeToggle();
   bindSoundToggle();
   bindGlobalClickSound();
+  bindModalBackdropClose();
 
   document.getElementById('btn-continue').disabled = !hasSavedGame();
 });
+
+function bindModalBackdropClose() {
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-overlay' && Game.modalDismiss) {
+      Game.modalDismiss();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && Game.modalDismiss) {
+      Game.modalDismiss();
+    }
+  });
+}
 
 function applyMuteIcon() {
   const icon = Sound.muted ? '🔇' : '🔊';
@@ -120,8 +135,12 @@ function bindCharacterScreen() {
   });
 }
 
-function snapshotIndicators(state) {
-  return { month: state.month, ...state.indicators, oilPrice: state.economy.oilPrice };
+function snapshotIndicators(state, tickSummary) {
+  return {
+    month: state.month, ...state.indicators, oilPrice: state.economy.oilPrice,
+    totalRevenue: tickSummary ? tickSummary.totalRevenue : 0,
+    totalExpenditure: tickSummary ? tickSummary.totalExpenditure : 0
+  };
 }
 
 function bindGameScreen() {
@@ -212,7 +231,7 @@ function processQueue() {
     lastTickSummary = monthlyEconomicTick(s);
     monthlyRelationsTick(s);
     applyCabinetMonthlyEffects(s);
-    s.history.push(snapshotIndicators(s));
+    s.history.push(snapshotIndicators(s, lastTickSummary));
     if (s.history.length > 60) s.history.shift();
     const unlocked = checkAchievements(s);
     unlocked.forEach(a => Game.queue.unshift({ type: 'achievement', payload: a }));

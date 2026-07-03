@@ -194,12 +194,23 @@ function driftCharacterRelations(state) {
 }
 
 // ------- نظام المهام -------
+// كل نوع مهمة مقيّد بفئات الشخصيات المناسبة له منطقياً - لا تُعرض مهام اقتصادية على سفير أجنبي مثلاً
 const MISSION_TYPES = [
-  { id: 'diplomatic', name: 'مهمة دبلوماسية', duration: 2, effectKey: 'internationalSupport', requiresCountry: true, boostTrait: 'diplomat' },
-  { id: 'economic', name: 'مهمة اقتصادية', duration: 2, effectKey: 'economicDevelopment', requiresCountry: false, boostTrait: 'econ_expert' },
-  { id: 'security', name: 'مهمة أمنية', duration: 2, effectKey: 'security', requiresCountry: false, boostTrait: 'military_strategist' },
-  { id: 'social', name: 'مهمة اجتماعية', duration: 2, effectKey: 'satisfaction', requiresCountry: false, boostTrait: 'charismatic' }
+  { id: 'diplomatic', name: 'مهمة دبلوماسية', duration: 2, effectKey: 'internationalSupport', requiresCountry: true, boostTrait: 'diplomat',
+    categories: ['government', 'business'], desc: 'إيفاد الشخصية للتفاوض مع دولة تختارها.' },
+  { id: 'representation', name: 'تمثيل واللوبي لدى دولته', duration: 3, effectKey: 'internationalSupport', requiresCountry: false, autoTargetOwnCountry: true, boostTrait: 'diplomat',
+    categories: ['foreign'], desc: 'يستخدم السفير قنواته الخاصة للضغط لصالحك في بلده الأصلي - دون الحاجة لاختيار هدف.' },
+  { id: 'economic', name: 'مهمة اقتصادية', duration: 2, effectKey: 'economicDevelopment', requiresCountry: false, boostTrait: 'econ_expert',
+    categories: ['government', 'business'], desc: 'تكليف بملف استثماري أو إصلاح اقتصادي محدد.' },
+  { id: 'security', name: 'مهمة أمنية', duration: 2, effectKey: 'security', requiresCountry: false, boostTrait: 'military_strategist',
+    categories: ['government', 'tribal'], desc: 'تهدئة أو تعزيز أمني في منطقة نفوذ الشخصية.' },
+  { id: 'social', name: 'مهمة توعية ومصالحة مجتمعية', duration: 2, effectKey: 'satisfaction', requiresCountry: false, boostTrait: 'charismatic',
+    categories: ['government', 'religious', 'civil', 'media', 'opposition', 'tribal'], desc: 'حملة تواصل مباشر مع الجمهور لاحتواء الاستياء.' }
 ];
+
+function missionTypesForCharacter(ch) {
+  return MISSION_TYPES.filter(t => !t.categories || t.categories.includes(ch.category));
+}
 
 function isCharacterBusy(state, charId) {
   const ch = getCharacter(state, charId);
@@ -210,11 +221,14 @@ function assignMission(state, charId, missionTypeId, targetCountryId) {
   const ch = getCharacter(state, charId);
   const type = MISSION_TYPES.find(m => m.id === missionTypeId);
   if (!ch || !type) return { ok: false, msg: 'بيانات غير صحيحة' };
+  if (type.categories && !type.categories.includes(ch.category)) return { ok: false, msg: `${ch.name} غير مناسب لهذا النوع من المهام.` };
   if (isCharacterBusy(state, charId)) return { ok: false, msg: `${ch.name} مشغول حالياً بمهمة أخرى.` };
+
+  const resolvedCountryId = type.autoTargetOwnCountry ? ch.country : (targetCountryId || null);
 
   const resolveAtMonth = state.month + type.duration;
   ch.busyUntil = resolveAtMonth;
-  state.missions.push({ id: 'ms_' + state.month + '_' + charId, charId, typeId: missionTypeId, targetCountryId: targetCountryId || null, resolveAtMonth });
+  state.missions.push({ id: 'ms_' + state.month + '_' + charId, charId, typeId: missionTypeId, targetCountryId: resolvedCountryId, resolveAtMonth });
   return { ok: true, msg: `أُوفد ${ch.name} في ${type.name}، ستظهر النتيجة خلال ${type.duration} أشهر.` };
 }
 
@@ -228,6 +242,10 @@ function resolveMissions(state) {
     let successChance = 45 + (ch.stats.competence - 50) * 0.6 + (ch.stats.loyalty - 50) * 0.2;
     if (hasTrait(ch, type.boostTrait)) successChance += 20;
     if (hasTrait(ch, 'negotiator')) successChance += 10;
+    // مكافأة "ملاءمة الدور": سفير يمثل بلده، زعيم قبلي يهدئ منطقته، رجل أعمال يدير ملفاً اقتصادياً - طبيعي أن ينجحوا أكثر
+    if (ch.category === 'foreign' && type.id === 'representation') successChance += 25;
+    if (ch.category === 'tribal' && type.id === 'security') successChance += 15;
+    if (ch.category === 'business' && type.id === 'economic') successChance += 15;
     successChance = Math.max(10, Math.min(90, successChance));
     const success = Math.random() * 100 < successChance;
     const magnitude = success ? 3 + Math.random() * 3 : -(1 + Math.random() * 2);
@@ -239,9 +257,10 @@ function resolveMissions(state) {
     state.indicators[type.effectKey] = clampIndicator(type.effectKey, state.indicators[type.effectKey] + magnitude);
     ch.stats.loyalty = clampStat(ch.stats.loyalty + (success ? 3 : -2));
 
+    const countryNote = m.targetCountryId ? ` (${(state.relations.countries.find(c => c.id === m.targetCountryId) || {}).name || ''})` : '';
     state.eventsLog.push({
       month: state.month, year: state.year, eventId: 'mission_' + m.typeId,
-      title: `نتيجة ${type.name}`,
+      title: `نتيجة ${type.name}${countryNote}`,
       optionLabel: `${ch.name}: ${success ? 'نجحت المهمة وتحسّن ' : 'فشلت المهمة وتراجع '}${INDICATOR_META[type.effectKey].name}.`
     });
   });
