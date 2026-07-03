@@ -236,18 +236,24 @@ function processQueue() {
     processScheduledEffects(s);
     lastTickSummary = monthlyEconomicTick(s);
     monthlyRelationsTick(s);
-    const missionResults = applyCabinetMonthlyEffects(s);
+    const cabinetResults = applyCabinetMonthlyEffects(s);
     s.history.push(snapshotIndicators(s, lastTickSummary));
     if (s.history.length > 60) s.history.shift();
     const unlocked = checkAchievements(s);
     unlocked.forEach(a => Game.queue.unshift({ type: 'achievement', payload: a }));
-    (missionResults || []).forEach(r => Game.queue.unshift({ type: 'missionResult', payload: r }));
+    (cabinetResults.missions || []).forEach(r => Game.queue.unshift({ type: 'missionResult', payload: r }));
+    (cabinetResults.turnovers || []).forEach(r => Game.queue.unshift({ type: 'turnoverResult', payload: r }));
     processQueue();
     return;
   }
 
   if (step.type === 'missionResult') {
     renderMissionResultModal(step.payload, () => processQueue());
+    return;
+  }
+
+  if (step.type === 'turnoverResult') {
+    renderTurnoverModal(step.payload, () => processQueue());
     return;
   }
 

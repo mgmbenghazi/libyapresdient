@@ -2,17 +2,30 @@
 const ALL_DASHBOARD_KEYS = INDICATOR_DOMAINS.flatMap(d => d.keys);
 
 // أسوأ عدد محدد من المؤشرات فقط - وليس كل المؤشرات - هذا هو الفارق بين "عرض بيانات" و"مركز إدارة"
+// يمتد أيضاً لأسوأ كيانات العلاقات (قبيلة/حزب/مؤسسة/دولة/منظمة) لا الـ21 مؤشراً الوطنية فقط -
+// إهمال قبيلة كاملة حتى الانهيار كان يمر بصمت قبل هذا التمديد
 function getAttentionAlerts(state, limit) {
   const ind = state.indicators;
   const hist = state.history;
   const prev = hist.length > 1 ? hist[hist.length - 2] : hist[hist.length - 1];
 
-  const alerts = ALL_DASHBOARD_KEYS.map(key => {
+  const indicatorAlerts = ALL_DASHBOARD_KEYS.map(key => {
     const score = normalizedIndicatorScore(key, ind[key]);
     const delta = prev ? ind[key] - prev[key] : 0;
-    return { key, score, value: ind[key], delta, severity: score < 30 ? 'crit' : 'warn' };
+    return { kind: 'indicator', key, name: INDICATOR_META[key].name, score, value: ind[key], delta, severity: score < 30 ? 'crit' : 'warn' };
   }).filter(a => a.score < 45);
 
+  const relationsAlerts = [];
+  Object.entries(RELATIONS_KIND_META).forEach(([relKind, meta]) => {
+    state.relations[meta.list].forEach(entity => {
+      const value = entity[meta.valueKey];
+      if (value < 45) {
+        relationsAlerts.push({ kind: 'relations', relKind, relId: entity.id, name: entity.name, score: value, value, delta: 0, severity: value < 30 ? 'crit' : 'warn' });
+      }
+    });
+  });
+
+  const alerts = [...indicatorAlerts, ...relationsAlerts];
   alerts.sort((a, b) => a.score - b.score);
   return alerts.slice(0, limit);
 }

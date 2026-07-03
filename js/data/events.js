@@ -265,5 +265,35 @@ const EVENTS = [
       { label: 'مفاوضات عاجلة لاحتواء الانسحاب', immediate: { politicalStability: -1 }, relationsEffect: { type: 'party', delta: 16 } },
       { label: 'المضي قدماً بدون هذا التيار', immediate: { politicalStability: -4 }, relationsEffect: { type: 'party', delta: -5 } }
     ]
+  },
+
+  // ------- أحداث تفعّل شبكة علاقات الشخصيات: عداوة حادة بين وزيرين حاليين تصبح مصدر خطر سياسي حقيقي -------
+  {
+    id: 'cabinet_leak', severity: 'crisis', category: 'political', title: 'تسريب إعلامي يفضح خلافاً حكومياً', weight: 3, minMonth: 6,
+    description: 'تسرّبت للإعلام تفاصيل خصومة حادة بين {target} داخل أروقة الحكومة، ما يهدد بإحراج سياسي واسع وتشكيك في تماسك فريقك.',
+    dynamicTarget: 'severeCabinetRivalry',
+    cooldown: 10,
+    options: [
+      { label: 'التدخل شخصياً للمصالحة بين الطرفين', advisor: 'رئيس الوزراء: خطوة تستهلك وقتك لكنها تحفظ تماسك الحكومة.',
+        immediate: { politicalStability: -1 }, characterRelationsEffect: { delta: 20 } },
+      { label: 'إسكات الخبر إعلامياً دون معالجة الجذر', advisor: 'المستشار السياسي: حل سريع لكن الخصومة تبقى تحت الرماد.',
+        immediate: { satisfaction: -2 }, characterRelationsEffect: { delta: -5 } },
+      { label: 'استغلال الانقسام لتقوية موقفك بينهما', advisor: 'المستشار السياسي: يمنحك نفوذاً أكبر لكنه يؤجج الخصومة أكثر.',
+        immediate: { politicalStability: 2, satisfaction: -3 }, characterRelationsEffect: { delta: -15 } }
+    ]
+  },
+  {
+    id: 'cabinet_resignation_threat', severity: 'crisis', category: 'political', title: 'تهديد باستقالة جماعية داخل الحكومة', weight: 2, minMonth: 10,
+    description: 'بلغت الخصومة بين {target} حداً دفع أحدهما لتهديدك صراحة بالاستقالة إن لم تحسم الموقف - أزمة تتطلب قراراً فورياً.',
+    dynamicTarget: 'criticalCabinetRivalry',
+    cooldown: 14,
+    options: [
+      { label: 'عقد لقاء ثلاثي حاسم لحل الخلاف نهائياً', advisor: 'رئيس الوزراء: مخاطرة عالية لكنها الحل الوحيد الجذري.',
+        immediate: { politicalStability: -2, budgetBalance: -1 }, characterRelationsEffect: { delta: 30 } },
+      { label: 'قبول استقالة الطرف الأقل ولاءً لك', advisor: 'المستشار السياسي: يُنهي الأزمة فوراً لكنه يفقدك خبرة قد تحتاجها.',
+        immediate: { politicalStability: 1, satisfaction: -1 }, dismissLowerLoyaltyOfPair: true },
+      { label: 'تجاهل التهديد واختبار جديته', advisor: 'المستشار السياسي: مقامرة قد تكلفك وزيراً فجأة دون تحضير بديل.',
+        immediate: { politicalStability: -4 }, characterRelationsEffect: { delta: -10 } }
+    ]
   }
 ];

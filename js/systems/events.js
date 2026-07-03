@@ -46,6 +46,21 @@ function applyEventOption(state, event, optionIndex) {
     applyRelationsEffect(state, effect);
   }
 
+  // أثر على علاقة ثنائية بين شخصيتين (يُستخدم مع dynamicTarget: 'severeCabinetRivalry')
+  if (option.characterRelationsEffect && event._target && event._target.type === 'characterPair') {
+    applyCharacterRelationsEffect(state, event._target.aId, event._target.bId, option.characterRelationsEffect.delta);
+  }
+
+  // إقالة فعلية للطرف الأقل ولاءً من زوج شخصيات مستهدف - لا مجرد وعد نصي بلا أثر ميكانيكي
+  if (option.dismissLowerLoyaltyOfPair && event._target && event._target.type === 'characterPair') {
+    const a = getCharacter(state, event._target.aId);
+    const b = getCharacter(state, event._target.bId);
+    if (a && b) {
+      const loser = a.stats.loyalty <= b.stats.loyalty ? a : b;
+      if (loser.ministry) dismissFromMinistry(state, loser.ministry);
+    }
+  }
+
   state.eventCooldowns[event.id] = state.month + (event.cooldown || DEFAULT_EVENT_COOLDOWN);
   state.eventsLog.push({ month: state.month, year: state.year, eventId: event.id, title: event.title, optionLabel: option.label });
 }

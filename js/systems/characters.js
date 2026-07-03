@@ -177,8 +177,8 @@ function applyCabinetMonthlyEffects(state) {
 
   driftCharacterRelations(state);
   const missionResults = resolveMissions(state);
-  processCastTurnover(state);
-  return missionResults;
+  const turnoverResults = processCastTurnover(state);
+  return { missions: missionResults, turnovers: turnoverResults };
 }
 
 // ------- شبكة العلاقات بين الشخصيات -------
@@ -189,9 +189,18 @@ function driftCharacterRelations(state) {
     if (!a || !b) return;
     // تقارب في الولاء للاعب يقوي التحالف، وتباعد كبير يوترها
     const loyaltyGap = Math.abs(a.stats.loyalty - b.stats.loyalty);
-    const pull = loyaltyGap < 20 ? 0.4 : -0.3;
+    let pull = loyaltyGap < 20 ? 0.4 : -0.3;
+    // صانع السلام يهدئ أي خصومة يكون طرفاً فيها، ومثير الخلاف يؤججها - بصرف النظر عن اتجاه الانجراف الطبيعي
+    if (hasTrait(a, 'peacemaker') || hasTrait(b, 'peacemaker')) pull += r.value < 0 ? 0.5 : 0;
+    if (hasTrait(a, 'divisive') || hasTrait(b, 'divisive')) pull += r.value < 0 ? -0.5 : -0.2;
     r.value = Math.max(-100, Math.min(100, r.value + pull + (Math.random() - 0.5) * 1.2));
   });
+}
+
+// أثر مباشر على علاقة ثنائية محددة بين شخصيتين - يُستخدم من خيارات القرارات/الأحداث الموجَّهة بعداوة حادة
+function applyCharacterRelationsEffect(state, aId, bId, delta) {
+  const rel = state.characterRelations.find(r => (r.a === aId && r.b === bId) || (r.a === bId && r.b === aId));
+  if (rel) rel.value = Math.max(-100, Math.min(100, rel.value + delta));
 }
 
 // ------- نظام المهام -------
@@ -291,6 +300,7 @@ function resolveMissions(state) {
 // ------- تجدد الشخصيات مع الوقت (تقاعد/استبدال) -------
 function processCastTurnover(state) {
   const eligible = state.characters.filter(c => !c.ministry && c.category !== 'foreign' && !isCharacterBusy(state, c.id));
+  const results = [];
   eligible.forEach(ch => {
     const sameCategoryCount = state.characters.filter(c => c.category === ch.category).length;
     if (sameCategoryCount <= 1) return; // لا نستبدل آخر ممثل لفئة كاملة
@@ -303,11 +313,14 @@ function processCastTurnover(state) {
         if (r.b === ch.id) return { ...r, b: successor.id };
         return r;
       });
+      const categoryName = CHARACTER_CATEGORIES.find(c => c.id === ch.category).name;
+      results.push({ oldName: ch.name, newName: successor.name, newRole: successor.role, categoryName });
       state.eventsLog.push({
         month: state.month, year: state.year, eventId: 'character_turnover',
         title: 'تغيّر في الوجوه المؤثرة',
-        optionLabel: `تنحّى ${ch.name} عن دوره، وبرز ${successor.name} كوجه جديد في ${CHARACTER_CATEGORIES.find(c => c.id === ch.category).name}.`
+        optionLabel: `تنحّى ${ch.name} عن دوره، وبرز ${successor.name} كوجه جديد في ${categoryName}.`
       });
     }
   });
+  return results;
 }

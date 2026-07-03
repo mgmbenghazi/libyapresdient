@@ -117,15 +117,23 @@ function renderAttentionStrip() {
   if (!alerts.length) return;
 
   wrap.innerHTML = alerts.map(a => {
-    const meta = INDICATOR_META[a.key];
-    const sign = a.delta > 0 ? '+' : '';
-    return `<div class="alert-chip ${a.severity}" data-key="${a.key}">
-      <span class="alert-dot"></span> ${meta.name}: ${fmtNum(a.value)}${meta.unit === '%' ? '%' : ''}
-      <span class="ac-delta">(${sign}${fmtNum(a.delta)})</span>
+    if (a.kind === 'indicator') {
+      const meta = INDICATOR_META[a.key];
+      const sign = a.delta > 0 ? '+' : '';
+      return `<div class="alert-chip ${a.severity}" data-kind="indicator" data-key="${a.key}">
+        <span class="alert-dot"></span> ${meta.name}: ${fmtNum(a.value)}${meta.unit === '%' ? '%' : ''}
+        <span class="ac-delta">(${sign}${fmtNum(a.delta)})</span>
+      </div>`;
+    }
+    return `<div class="alert-chip ${a.severity}" data-kind="relations" data-rel-kind="${a.relKind}" data-rel-id="${a.relId}">
+      <span class="alert-dot"></span> ${a.name}: ${fmtNum(a.value)}%
     </div>`;
   }).join('');
   wrap.querySelectorAll('.alert-chip').forEach(el => {
-    el.addEventListener('click', () => openIndicatorDetailModal(el.dataset.key));
+    el.addEventListener('click', () => {
+      if (el.dataset.kind === 'indicator') openIndicatorDetailModal(el.dataset.key);
+      else openRelationsEntityModal(el.dataset.relKind, el.dataset.relId);
+    });
   });
 }
 
@@ -794,6 +802,17 @@ function renderMissionResultModal(result, onClose) {
     <h2>${result.typeName}${targetNote}</h2>
     <p class="modal-desc">${result.charName} ${result.success ? 'نجح في مهمته.' : 'فشل في مهمته.'}</p>
     <div class="ind-detail-value ${cls}">${result.magnitude >= 0 ? '+' : ''}${fmtNum(result.magnitude)}<span class="ind-detail-unit">${result.effectName}</span></div>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">حسناً</button></div>`;
+  const dismiss = () => { hideModal(); onClose(); };
+  showModal(html, { onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
+}
+
+function renderTurnoverModal(result, onClose) {
+  const html = `
+    <span class="modal-tag">تغيّر في الوجوه المؤثرة 🔄</span>
+    <h2>${result.newName}</h2>
+    <p class="modal-desc">تنحّى ${result.oldName} عن دوره في ${result.categoryName}، وبرز ${result.newName} (${result.newRole}) كوجه جديد.</p>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">حسناً</button></div>`;
   const dismiss = () => { hideModal(); onClose(); };
   showModal(html, { onDismiss: dismiss });

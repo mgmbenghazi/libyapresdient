@@ -43,6 +43,11 @@ function applyDecisionOption(state, decision, optionIndex) {
     applyRelationsEffect(state, effect);
   }
 
+  // أثر على علاقة ثنائية بين شخصيتين (يُستخدم مع dynamicTarget: 'severeCabinetRivalry')
+  if (option.characterRelationsEffect && decision._target && decision._target.type === 'characterPair') {
+    applyCharacterRelationsEffect(state, decision._target.aId, decision._target.bId, option.characterRelationsEffect.delta);
+  }
+
   // تعديل سياسة قطاع إنتاجي بشكل دائم (ملكية/توجّه/استثمار) بدل أثر لمرة واحدة يُنسى
   if (option.sectorPolicyEffect) {
     const eff = option.sectorPolicyEffect;

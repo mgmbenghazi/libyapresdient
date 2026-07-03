@@ -133,6 +133,18 @@ function outreachToEntity(state, kind, id) {
   return { ok: true, msg: `تواصلت مع ${found.entity.name}. ارتفع مؤشر ${found.label} بمقدار ${delta.toFixed(1)}.`, delta };
 }
 
+// يفعّل شبكة علاقات الشخصيات الـ34: تجاهلها كان يجعلها زخرفة بلا أثر - عداوة حادة بين وزيرين حاليين تصبح مصدر أحداث حقيقية
+function worstCabinetRivalry(state, threshold) {
+  const ministerIds = Object.values(state.cabinet).filter(Boolean);
+  const rivalries = state.characterRelations.filter(r => r.value < threshold && ministerIds.includes(r.a) && ministerIds.includes(r.b));
+  if (!rivalries.length) return null;
+  const worst = rivalries.reduce((min, r) => (r.value < min.value ? r : min));
+  const a = getCharacter(state, worst.a);
+  const b = getCharacter(state, worst.b);
+  if (!a || !b) return null;
+  return { type: 'characterPair', id: a.id + '|' + b.id, name: `${a.name} و${b.name}`, aId: a.id, bId: b.id, aName: a.name, bName: b.name, value: worst.value };
+}
+
 // محلّل الأهداف الديناميكية: يحدد وقت عرض القرار/الحدث للاعب أي كيان بالضبط يستهدفه هذه المرة
 // يُرجع null إذا لم يكن هناك هدف صالح حالياً (يُستبعد القرار/الحدث تلقائياً من القائمة عندها)
 function resolveDynamicTarget(state, kind) {
@@ -157,6 +169,10 @@ function resolveDynamicTarget(state, kind) {
       const c = highestCountryInGroup(state, 'global');
       return c && c.relation > 70 ? { type: 'country', id: c.id, name: c.name, value: c.relation } : null;
     }
+    case 'severeCabinetRivalry':
+      return worstCabinetRivalry(state, -50);
+    case 'criticalCabinetRivalry':
+      return worstCabinetRivalry(state, -75);
     default:
       return null;
   }

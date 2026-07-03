@@ -223,11 +223,14 @@ const DECISIONS = [
     cooldown: 18,
     options: [
       { label: 'قبول البرنامج والالتزام بالإصلاحات', advisor: 'المستشار الاقتصادي: يوفر سيولة عاجلة بكلفة سياسية.',
-        immediate: { forexReserves: 15000, satisfaction: -4, internationalSupport: 5 }, medium: { budgetBalance: 3 }, long: { economicDevelopment: 3 } },
+        immediate: { forexReserves: 15000, satisfaction: -4, internationalSupport: 5 }, medium: { budgetBalance: 3 }, long: { economicDevelopment: 3 },
+        relationsEffect: { type: 'org', id: 'imf', delta: 18 } },
       { label: 'التفاوض على شروط أخف', advisor: 'المستشار الدبلوماسي: نتيجة وسطية تستغرق وقتاً أطول.',
-        immediate: { forexReserves: 7000, internationalSupport: 2 }, medium: {}, long: {} },
+        immediate: { forexReserves: 7000, internationalSupport: 2 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'imf', delta: 6 } },
       { label: 'رفض البرنامج والاعتماد على الذات', advisor: 'المستشار السياسي: يحافظ على السيادة الاقتصادية لكن يفوت فرصة سيولة.',
-        immediate: { internationalSupport: -3, politicalStability: 2 }, medium: {}, long: {} }
+        immediate: { internationalSupport: -3, politicalStability: 2 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'imf', delta: -12 } }
     ]
   },
   {
@@ -249,11 +252,30 @@ const DECISIONS = [
     minMonth: 6, cooldown: 12,
     options: [
       { label: 'الالتزام الكامل بحصص الإنتاج', advisor: 'وزير النفط: يعزز مكانة ليبيا الدولية لكنه يحد من الإيرادات القصوى.',
-        immediate: { internationalSupport: 4, oilProduction: -50 }, medium: {}, long: { budgetBalance: 2 } },
+        immediate: { internationalSupport: 4, oilProduction: -50 }, medium: {}, long: { budgetBalance: 2 },
+        relationsEffect: { type: 'org', id: 'opec', delta: 15 } },
       { label: 'التزام جزئي مع مرونة وطنية', advisor: 'وزير النفط: توازن بين المصلحة الوطنية والتضامن الدولي.',
-        immediate: { internationalSupport: 1 }, medium: {}, long: {} },
+        immediate: { internationalSupport: 1 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'opec', delta: 4 } },
       { label: 'رفع الإنتاج خارج الحصص المتفق عليها', advisor: 'وزير النفط: عوائد أعلى فوراً لكن توتر مع أعضاء أوبك.',
-        immediate: { oilProduction: 100, internationalSupport: -5 }, medium: { budgetBalance: 3 }, long: {} }
+        immediate: { oilProduction: 100, internationalSupport: -5 }, medium: { budgetBalance: 3 }, long: {},
+        relationsEffect: { type: 'org', id: 'opec', delta: -18 } }
+    ]
+  },
+  {
+    id: 'un_rights_report', category: 'diplomatic', type: 'diplomatic', title: 'تقرير أممي حول أوضاع حقوق الإنسان',
+    description: 'تصدر الأمم المتحدة تقريراً دورياً يقيّم أوضاع حقوق الإنسان والحريات المدنية في البلاد، ويطالب بإصلاحات محددة خلال مهلة زمنية.',
+    minMonth: 7, cooldown: 14,
+    options: [
+      { label: 'التعاون الكامل وتنفيذ التوصيات المطلوبة', advisor: 'المستشار الدبلوماسي: يحسّن الصورة الدولية لكنه قد يواجه معارضة داخلية محافظة.',
+        immediate: { internationalSupport: 4, satisfaction: -1 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'un', delta: 16 } },
+      { label: 'قبول جزئي مع تحفظات سيادية', advisor: 'المستشار الدبلوماسي: موقف متوازن يحفظ ماء الوجه للطرفين.',
+        immediate: { internationalSupport: 1 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'un', delta: 5 } },
+      { label: 'رفض التقرير بوصفه تدخلاً في الشأن الداخلي', advisor: 'المستشار السياسي: يحافظ على السيادة لكن يثير انتقاداً دولياً واسعاً.',
+        immediate: { internationalSupport: -4, politicalStability: 2 }, medium: {}, long: {},
+        relationsEffect: { type: 'org', id: 'un', delta: -14 } }
     ]
   },
   {
