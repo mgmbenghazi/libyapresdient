@@ -16,8 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSoundToggle();
   bindGlobalClickSound();
 
-  const saved = loadGame();
-  document.getElementById('btn-continue').disabled = !saved;
+  document.getElementById('btn-continue').disabled = !hasSavedGame();
 });
 
 function applyMuteIcon() {
@@ -76,9 +75,14 @@ function bindStartScreen() {
     renderScenarioList();
   });
   document.getElementById('btn-continue').addEventListener('click', () => {
-    const saved = loadGame();
-    if (!saved) return;
-    Game.state = saved;
+    const result = loadGame();
+    if (!result.ok) {
+      showCorruptSaveModal(result.reason);
+      return;
+    }
+    Game.state = result.state;
+    Game.prevIndicators = null;
+    document.getElementById('indicator-cards').innerHTML = '';
     showScreen('screen-game');
     renderGameScreen();
   });

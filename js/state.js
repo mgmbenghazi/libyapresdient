@@ -1,5 +1,12 @@
-// إدارة حالة اللعبة والحفظ/التحميل
+// إدارة حالة اللعبة والحفظ/التحميل، مع نظام ترحيل (migration) لأشكال الحفظ القديمة
 const SAVE_KEY = 'rayyes_libya_save';
+
+// تاريخ إصدارات شكل الحفظ (schema) - كل تغيير في بنية الحالة المحفوظة يجب أن يرفع هذا الرقم
+// 1: الشكل الأساسي الأول (بدون شخصيات/وزراء، وبدون قطاعات الزراعة/السياحة/الصناعة/الميزان التجاري)
+// 2: + نظام الشخصيات (characters) ومجلس الوزراء (cabinet)
+// 3: + مؤشرات القطاعات الجديدة (agricultureLevel, tourismLevel, industryLevel, tradeBalance)
+// 4: + شبكة علاقات الشخصيات (characterRelations) ونظام المهام (missions) وحقل busyUntil لكل شخصية
+const CURRENT_SAVE_VERSION = 4;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -12,7 +19,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
   }
 
   const state = {
-    version: 1,
+    version: CURRENT_SAVE_VERSION,
     scenarioId, presidentName, backgroundId,
     advisors: advisorChoices,
     month: 1, year: 1,
@@ -44,8 +51,89 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
   return state;
 }
 
+// ------- ترحيل الحفظ (Migrations) -------
+// كل دالة تأخذ حالة من إصدار N وتُرجعها مُطابقة لشكل الإصدار N+1، بإضافة الحقول الناقصة فقط
+// دون المساس بتقدم اللاعب الحالي (أرقام المؤشرات، السجلات، إلخ)
+const SAVE_MIGRATIONS = {
+  1: function migrateV1toV2(s) {
+    if (!s.characters || !s.cabinet) {
+      const base = initCharacterState();
+      s.characters = base.characters.map(c => {
+        const clone = { ...c, stats: { ...c.stats } };
+        delete clone.busyUntil; // لم يكن هذا الحقل موجوداً في هذا الإصدار بعد
+        return clone;
+      });
+      s.cabinet = base.cabinet;
+    }
+    s.version = 2;
+    return s;
+  },
+  2: function migrateV2toV3(s) {
+    const sectorDefaults = { agricultureLevel: 35, tourismLevel: 25, industryLevel: 30, tradeBalance: -10 };
+    if (!s.indicators) s.indicators = {};
+    Object.entries(sectorDefaults).forEach(([key, def]) => {
+      if (s.indicators[key] === undefined) s.indicators[key] = def;
+    });
+    s.version = 3;
+    return s;
+  },
+  3: function migrateV3toV4(s) {
+    if (!Array.isArray(s.characterRelations)) {
+      s.characterRelations = CHARACTER_RELATIONS.map(r => ({ ...r }));
+    }
+    if (!Array.isArray(s.missions)) {
+      s.missions = [];
+    }
+    (s.characters || []).forEach(c => {
+      if (c.busyUntil === undefined) c.busyUntil = 0;
+    });
+    s.version = 4;
+    return s;
+  }
+};
+
+function migrateSaveState(state) {
+  let s = state;
+  if (!s.version || typeof s.version !== 'number') s.version = 1;
+  let guard = 0; // حارس أمان يمنع أي حلقة لا نهائية في حال خطأ برمجي مستقبلي
+  while (s.version < CURRENT_SAVE_VERSION && guard < 50) {
+    const migrate = SAVE_MIGRATIONS[s.version];
+    if (!migrate) break; // لا يوجد مسار ترحيل معروف لهذا الإصدار - سيتم رفضه لاحقاً عبر التحقق من الشكل
+    s = migrate(s);
+    guard++;
+  }
+  return s;
+}
+
+// تحقق دفاعي بسيط: هل الحالة (بعد الترحيل) تحتوي كل الحقول الأساسية التي يعتمد عليها المحرك؟
+function validateStateShape(s) {
+  if (!s || typeof s !== 'object') return { ok: false, reason: 'الحالة المحفوظة ليست كائناً صالحاً.' };
+  const requiredPaths = [
+    ['presidentName'], ['month'], ['year'],
+    ['indicators', 'satisfaction'], ['indicators', 'treasury'],
+    ['budget', 'allocations'], ['economy', 'oilPrice'],
+    ['relations', 'tribes'], ['relations', 'countries'],
+    ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
+    ['scheduledEffects'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
+  ];
+  for (const path of requiredPaths) {
+    let cur = s;
+    for (const key of path) {
+      if (cur === undefined || cur === null || !(key in cur)) {
+        return { ok: false, reason: `حقل ناقص في الحفظ: ${path.join('.')}` };
+      }
+      cur = cur[key];
+    }
+  }
+  if (!Array.isArray(s.characters) || !Array.isArray(s.relations.tribes)) {
+    return { ok: false, reason: 'شكل بيانات غير متوافق في الحفظ.' };
+  }
+  return { ok: true };
+}
+
 function saveGame(state) {
   try {
+    state.version = CURRENT_SAVE_VERSION;
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     return true;
   } catch (e) {
@@ -54,16 +142,49 @@ function saveGame(state) {
   }
 }
 
+// يُرجع دائماً { ok: true, state } أو { ok: false, reason } - لا يُرمى أي استثناء لأعلى أبداً
 function loadGame() {
+  let raw;
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    raw = localStorage.getItem(SAVE_KEY);
   } catch (e) {
-    return null;
+    return { ok: false, reason: 'التخزين المحلي غير متاح في هذا المتصفح.' };
+  }
+  if (!raw) return { ok: false, reason: 'لا توجد لعبة محفوظة.' };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    return { ok: false, reason: 'ملف الحفظ تالف ولا يمكن قراءته.' };
+  }
+
+  let migrated;
+  try {
+    migrated = migrateSaveState(parsed);
+  } catch (e) {
+    console.error('migration failed', e);
+    return { ok: false, reason: 'تعذر ترقية الحفظ القديم إلى الإصدار الحالي.' };
+  }
+
+  const validation = validateStateShape(migrated);
+  if (!validation.ok) {
+    return { ok: false, reason: validation.reason };
+  }
+
+  return { ok: true, state: migrated };
+}
+
+function hasSavedGame() {
+  try {
+    return !!localStorage.getItem(SAVE_KEY);
+  } catch (e) {
+    return false;
   }
 }
 
 function clearSave() {
-  localStorage.removeItem(SAVE_KEY);
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch (e) { /* ignore */ }
 }

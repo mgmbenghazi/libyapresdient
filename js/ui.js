@@ -665,6 +665,25 @@ function renderAchievementModal(achievement, onClose) {
   document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
 }
 
+function showCorruptSaveModal(reason) {
+  const html = `
+    <span class="modal-tag">⚠️ تعذر تحميل اللعبة المحفوظة</span>
+    <h2>مشكلة في ملف الحفظ</h2>
+    <p class="modal-desc">${reason || 'حدث خطأ غير معروف أثناء قراءة اللعبة المحفوظة.'}<br><br>
+    قد يكون الحفظ من إصدار قديم غير متوافق أو تعرّض للتلف. يمكنك مسح هذا الحفظ وبدء لعبة جديدة، أو الإبقاء عليه ومحاولة التحميل لاحقاً بعد تحديث اللعبة.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="modal-clear-save">مسح الحفظ التالف وإغلاق</button>
+      <button class="btn btn-ghost" id="modal-continue">إبقاء الحفظ وإغلاق</button>
+    </div>`;
+  showModal(html);
+  document.getElementById('modal-clear-save').addEventListener('click', () => {
+    clearSave();
+    document.getElementById('btn-continue').disabled = true;
+    hideModal();
+  });
+  document.getElementById('modal-continue').addEventListener('click', hideModal);
+}
+
 function renderYearStartModal(onContinue) {
   const s = Game.state;
   const html = `
