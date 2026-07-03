@@ -609,7 +609,7 @@ function renderDecisionModal(decision, onChoose) {
       ${decision.options.map((o, i) => `
         <div class="decision-option" data-idx="${i}">
           <div class="opt-label">${o.label}</div>
-          ${o.advisor ? `<div class="opt-advisor">💬 ${o.advisor}</div>` : ''}
+          ${o.advisor ? `<div class="opt-advisor">💬 ${resolveAdvisorText(Game.state, decision, o)}</div>` : ''}
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;

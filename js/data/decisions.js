@@ -474,5 +474,192 @@ const DECISIONS = [
       { label: 'إجراء انتخابات جزئية في مناطق مستقرة فقط', advisor: 'المستشار السياسي: حل وسط غير مقنع لكل الأطراف.',
         immediate: { politicalStability: 2, internationalSupport: -1 }, medium: {}, long: {} }
     ]
+  },
+
+  // ------- قرارات تمنح الوضع السياسي الداخلي والدولي تأثيراً فعلياً -------
+  {
+    id: 'tribal_reconciliation_summit', category: 'political', type: 'strategic', title: 'مؤتمر مصالحة قبلية شامل',
+    description: 'تراجع ولاء القبائل بشكل عام بشكل ملحوظ في الآونة الأخيرة. مستشاروك يقترحون عقد مؤتمر مصالحة وطني يجمع شيوخ القبائل الكبرى لاحتواء الاستياء قبل أن يتفاقم.',
+    condition: (s) => avgTribalLoyalty(s) < 45,
+    cooldown: 14,
+    options: [
+      { label: 'مؤتمر مصالحة كبير بحضور رئاسي شخصي', advisor: 'المستشار السياسي: أقوى أثر ممكن، لكنه يستهلك وقتاً ورأس مال سياسياً.',
+        immediate: { budgetBalance: -4, politicalStability: 3 }, medium: { politicalStability: 3 }, long: {},
+        relationsEffect: { type: 'allTribes', delta: 12 } },
+      { label: 'تفويض وزير الداخلية لإدارة الحوار', advisor: 'وزير الداخلية: أقل تكلفة سياسية لكن الأثر أضعف.',
+        immediate: { budgetBalance: -2 }, medium: {}, long: {},
+        relationsEffect: { type: 'allTribes', delta: 6 } },
+      { label: 'تجاهل الدعوات لعقد المؤتمر', advisor: 'المستشار السياسي: توفير فوري للموارد بثمن تراكم الاستياء القبلي.',
+        immediate: { politicalStability: -2 }, medium: {}, long: {},
+        relationsEffect: { type: 'allTribes', delta: -3 } }
+    ]
+  },
+  {
+    id: 'neighbor_relations_crisis', category: 'diplomatic', type: 'diplomatic', title: 'توتر متصاعد مع {target}',
+    description: 'تدهورت العلاقات مع {target} إلى مستوى مقلق، وسط تقارير عن حشود حدودية وتصريحات إعلامية متبادلة حادة. مستشاروك يطالبون بموقف واضح قبل أن يخرج الملف عن السيطرة.',
+    dynamicTarget: 'lowestNeighborRelation',
+    cooldown: 10,
+    options: [
+      { label: 'إيفاد وفد دبلوماسي رفيع لتهدئة التوتر', advisor: 'المستشار الدبلوماسي: يحتاج تنازلات لكنه يمنع التصعيد.',
+        immediate: { internationalSupport: 2 }, medium: {}, long: {},
+        relationsEffect: { type: 'country', delta: 20 } },
+      { label: 'اقتراح لجنة حدودية مشتركة لضبط الخلاف', advisor: 'المستشار الدبلوماسي: حل متوازن يحفظ ماء الوجه للطرفين.',
+        immediate: {}, medium: { internationalSupport: 1 }, long: {},
+        relationsEffect: { type: 'country', delta: 10 } },
+      { label: 'تصعيد الخطاب الرسمي ورفض التنازل', advisor: 'المستشار الأمني: يرضي الرأي العام الداخلي لكنه يخاطر بأزمة حقيقية.',
+        immediate: { politicalStability: 2, security: -3 }, medium: {}, long: {},
+        relationsEffect: { type: 'country', delta: -15 } }
+    ]
+  },
+  {
+    id: 'deepen_strategic_alliance', category: 'diplomatic', type: 'diplomatic', title: 'عرض لتعميق التحالف الاستراتيجي مع {target}',
+    description: 'بلغت العلاقة مع {target} مستوى متيناً غير معتاد، وتعرض هذه الدولة توقيع اتفاقية شراكة استراتيجية شاملة تشمل التعاون الأمني والاقتصادي طويل الأمد.',
+    dynamicTarget: 'highestGlobalRelation',
+    cooldown: 16,
+    options: [
+      { label: 'توقيع اتفاقية شراكة استراتيجية شاملة', advisor: 'المستشار الدبلوماسي: التزام كبير طويل الأمد بعائد استراتيجي كبير.',
+        immediate: { economicDevelopment: 3, security: 2 }, medium: { internationalSupport: 3 }, long: {},
+        relationsEffect: { type: 'country', delta: 10 } },
+      { label: 'اتفاقية تعاون محدودة دون التزامات شاملة', advisor: 'المستشار الدبلوماسي: يحافظ على مرونة السياسة الخارجية.',
+        immediate: { economicDevelopment: 1 }, medium: {}, long: {},
+        relationsEffect: { type: 'country', delta: 5 } },
+      { label: 'الحفاظ على التوازن ورفض التقارب الأعمق', advisor: 'المستشار السياسي: يجنّب الانحياز الكامل لطرف دولي واحد.',
+        immediate: {}, medium: {}, long: {}, relationsEffect: { type: 'country', delta: -3 } }
+    ]
+  },
+  {
+    id: 'party_outreach', category: 'political', type: 'tactical', title: 'تراجع حاد في دعم {target}',
+    description: 'يشهد تيار "{target}" تراجعاً حاداً في مستوى دعمه وتعاونه مع الحكومة، وسط أصوات داخله تطالب بمراجعة الموقف من الرئاسة.',
+    dynamicTarget: 'lowestPartySupport',
+    cooldown: 10,
+    options: [
+      { label: 'اجتماع مباشر مع قيادات التيار وتقديم تنازلات', advisor: 'المستشار السياسي: يحتاج مرونة سياسية حقيقية.',
+        immediate: { budgetBalance: -1 }, medium: {}, long: {},
+        relationsEffect: { type: 'party', delta: 15 } },
+      { label: 'التواصل الإعلامي دون تنازلات فعلية', advisor: 'المستشار السياسي: قد لا يقنع القاعدة الحزبية.',
+        immediate: {}, medium: {}, long: {}, relationsEffect: { type: 'party', delta: 5 } },
+      { label: 'تجاهل الأمر باعتباره مناورة سياسية عابرة', advisor: 'المستشار السياسي: خطر تحول هذا التيار إلى معارضة فعلية.',
+        immediate: {}, medium: {}, long: {}, relationsEffect: { type: 'party', delta: -8 } }
+    ]
+  },
+
+  // ------- توسعة إضافية لبنك القرارات لتقليل التكرار على مدى فترة كاملة -------
+  {
+    id: 'women_empowerment', category: 'social', type: 'tactical', title: 'برنامج تمكين المرأة اقتصادياً',
+    description: 'تقترح مستشارتك برنامجاً وطنياً لتمكين المرأة في سوق العمل وريادة الأعمال.',
+    minMonth: 6, cooldown: 14,
+    options: [
+      { label: 'برنامج تمويل وتدريب واسع لرائدات الأعمال', advisor: 'المستشار الاقتصادي: يوسع القاعدة الإنتاجية للاقتصاد.',
+        immediate: { budgetBalance: -2, satisfaction: 2 }, medium: { unemployment: -1, economicDevelopment: 2 }, long: {} },
+      { label: 'حصص توظيف في القطاع العام فقط', advisor: 'المستشار السياسي: أثر رمزي أسرع لكنه محدود اقتصادياً.',
+        immediate: { satisfaction: 1 }, medium: { unemployment: -1 }, long: {} },
+      { label: 'تأجيل البرنامج لأولويات أخرى', advisor: 'المستشار السياسي: يوفر الميزانية لكنه يثير انتقادات حقوقية.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'veterans_reintegration', category: 'security', type: 'tactical', title: 'إعادة دمج المقاتلين السابقين',
+    description: 'يقترح وزير الدفاع برنامجاً لإعادة دمج مقاتلي الميليشيات السابقين في الحياة المدنية والوظائف الحكومية.',
+    minMonth: 8, cooldown: 14,
+    options: [
+      { label: 'برنامج تأهيل وتوظيف حكومي واسع', advisor: 'وزير الدفاع: يقلل مخاطر تحول المسرحين إلى تهديد أمني.',
+        immediate: { budgetBalance: -4, security: 3 }, medium: { unemployment: -1 }, long: {} },
+      { label: 'تعويضات مالية دون برنامج تأهيل', advisor: 'وزير المالية: أسرع تنفيذاً لكن أقل استدامة.',
+        immediate: { budgetBalance: -3, security: 1 }, medium: {}, long: {} },
+      { label: 'ترك الأمر لكل منطقة لتدبيره محلياً', advisor: 'وزير الداخلية: يوفر المال لكنه يخاطر بتفاوت كبير بين المناطق.',
+        immediate: {}, medium: { security: -2 }, long: {} }
+    ]
+  },
+  {
+    id: 'water_infrastructure', category: 'economic', type: 'tactical', title: 'تحلية المياه وشبكات المياه',
+    description: 'تعاني مناطق ساحلية وداخلية من نقص متكرر في المياه الصالحة للشرب، ما يستدعي الاستثمار في محطات تحلية وشبكات جديدة.',
+    minMonth: 5, cooldown: 12,
+    options: [
+      { label: 'بناء محطات تحلية كبرى على الساحل', advisor: 'مستشار البنية التحتية: حل جذري بتكلفة عالية.',
+        immediate: { budgetBalance: -6, satisfaction: 3 }, medium: { infrastructureLevel: 4 }, long: { infrastructureLevel: 3 } },
+      { label: 'صيانة وتوسعة الشبكات القائمة فقط', advisor: 'مستشار البنية التحتية: أرخص وأسرع لكن أثره محدود.',
+        immediate: { budgetBalance: -2, satisfaction: 1 }, medium: { infrastructureLevel: 2 }, long: {} },
+      { label: 'تأجيل المشروع لضيق الموازنة', advisor: 'وزير المالية: يوفر المال بثمن استمرار أزمات المياه الدورية.',
+        immediate: { satisfaction: -2 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'anti_corruption_commission', category: 'political', type: 'strategic', title: 'إنشاء هيئة مستقلة لمكافحة الفساد',
+    description: 'تتصاعد الضغوط الشعبية والدولية لإنشاء هيئة رقابية مستقلة تحقق في قضايا الفساد داخل مؤسسات الدولة.',
+    minMonth: 10, oneTime: true,
+    options: [
+      { label: 'هيئة مستقلة بصلاحيات واسعة وحصانة قانونية', advisor: 'المستشار السياسي: يعزز الثقة لكنه قد يطال شخصيات نافذة داخل الحكومة.',
+        immediate: { satisfaction: 4, internationalSupport: 3, politicalStability: -3 }, medium: { politicalStability: 4 }, long: {} },
+      { label: 'هيئة استشارية محدودة الصلاحيات', advisor: 'المستشار السياسي: خطوة رمزية بمخاطرة أقل.',
+        immediate: { satisfaction: 1 }, medium: {}, long: {} },
+      { label: 'الاكتفاء بالأطر الرقابية الحالية', advisor: 'المستشار السياسي: يتجنب المواجهة الداخلية لكنه يخيب الآمال الشعبية.',
+        immediate: { satisfaction: -3, internationalSupport: -2 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'refugee_displaced_support', category: 'social', type: 'tactical', title: 'دعم النازحين داخلياً',
+    description: 'لا تزال أعداد من النازحين داخلياً بسبب أحداث سابقة تعيش في ظروف صعبة وتنتظر حلولاً للإسكان والخدمات.',
+    minMonth: 4, cooldown: 12,
+    options: [
+      { label: 'برنامج إسكان وعودة طوعية مدعوم بالكامل', advisor: 'مستشار الشؤون الاجتماعية: حل شامل بتكلفة كبيرة.',
+        immediate: { budgetBalance: -4, satisfaction: 3, poverty: -2 }, medium: {}, long: {} },
+      { label: 'مساعدات إغاثية دورية دون حل دائم', advisor: 'مستشار الشؤون الاجتماعية: يخفف المعاناة دون معالجة الجذر.',
+        immediate: { budgetBalance: -2, satisfaction: 1 }, medium: {}, long: {} },
+      { label: 'ترك الملف لمنظمات الإغاثة الدولية', advisor: 'المستشار الدبلوماسي: يوفر المال المحلي لكنه يعكس ضعف تعامل الدولة مع الملف.',
+        immediate: { internationalSupport: -1 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'tech_park_investment', category: 'economic', type: 'tactical', title: 'إنشاء مجمع تقني للشركات الناشئة',
+    description: 'يقترح مستشاروك إنشاء مجمع تقني يستقطب الشركات الناشئة الليبية والإقليمية، استكمالاً لجهود التحول الرقمي.',
+    minMonth: 18, cooldown: 16,
+    options: [
+      { label: 'مجمع تقني كامل مع حوافز ضريبية للشركات', advisor: 'المستشار الاقتصادي: استثمار طموح يستهدف اقتصاد المعرفة.',
+        immediate: { budgetBalance: -3 }, medium: { industryLevel: 2, unemployment: -1 }, long: { economicDevelopment: 3 } },
+      { label: 'حاضنة أعمال صغيرة كتجربة أولى', advisor: 'المستشار الاقتصادي: خطوة متواضعة منخفضة المخاطر.',
+        immediate: { budgetBalance: -1 }, medium: { industryLevel: 1 }, long: {} },
+      { label: 'عدم الاستثمار في هذا المجال حالياً', advisor: 'وزير المالية: أولويات أخرى أكثر إلحاحاً.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'media_regulation_reform', category: 'political', type: 'tactical', title: 'مراجعة تنظيم القطاع الإعلامي',
+    description: 'يتزايد الجدل حول ترخيص القنوات الفضائية والمواقع الإخبارية المحلية وحدود التنظيم الحكومي لها.',
+    minMonth: 9, cooldown: 14,
+    options: [
+      { label: 'تحرير الترخيص الإعلامي مع معايير مهنية واضحة', advisor: 'المستشار السياسي: يحسن السمعة الدولية بمخاطرة نقد داخلي أوسع.',
+        immediate: { internationalSupport: 2, politicalStability: -1 }, medium: {}, long: {} },
+      { label: 'إبقاء الترخيص الحالي مع تحديثات طفيفة', advisor: 'المستشار السياسي: تغيير شكلي دون أثر يُذكر.',
+        immediate: {}, medium: {}, long: {} },
+      { label: 'تشديد شروط الترخيص الإعلامي', advisor: 'المستشار الأمني: يحد من الانتقادات لكنه يضر بالسمعة الدولية.',
+        immediate: { internationalSupport: -3, politicalStability: 2 }, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'agricultural_export_push', category: 'economic', type: 'tactical', title: 'دفعة لتصدير المنتجات الزراعية',
+    description: 'تحقق بعض المحاصيل الليبية جودة تنافسية إقليمياً، ويقترح مستشاروك دعم تصديرها بدل الاكتفاء بالسوق المحلي.',
+    minMonth: 16, cooldown: 14,
+    condition: (s) => s.indicators.agricultureLevel > 40,
+    options: [
+      { label: 'دعم لوجستي وتسويقي كامل للمصدرين الزراعيين', advisor: 'المستشار الاقتصادي: يحول الزراعة إلى مصدر عملة صعبة حقيقي.',
+        immediate: { budgetBalance: -2 }, medium: { tradeBalance: 2 }, long: { tradeBalance: 3, agricultureLevel: 2 } },
+      { label: 'تسهيلات جمركية محدودة فقط', advisor: 'المستشار الاقتصادي: خطوة أولى منخفضة الكلفة.',
+        immediate: {}, medium: { tradeBalance: 1 }, long: {} },
+      { label: 'الإبقاء على التركيز على السوق المحلي', advisor: 'المستشار الاقتصادي: يحمي الأمن الغذائي المحلي أولاً.',
+        immediate: {}, medium: {}, long: {} }
+    ]
+  },
+  {
+    id: 'housing_market_reform', category: 'economic', type: 'tactical', title: 'تنظيم سوق العقارات',
+    description: 'يشهد سوق العقارات في المدن الكبرى ارتفاعاً حاداً في الأسعار نتيجة المضاربة، ما يصعّب حصول الشباب على سكن.',
+    minMonth: 12, cooldown: 14,
+    options: [
+      { label: 'ضريبة على العقارات الشاغرة والمضاربة العقارية', advisor: 'المستشار الاقتصادي: يهدئ السوق لكنه يواجه معارضة من كبار الملاك.',
+        immediate: { satisfaction: 2, economicDevelopment: -1 }, medium: { poverty: -1 }, long: {} },
+      { label: 'تحفيز البناء السكني الجديد لزيادة العرض', advisor: 'مستشار البنية التحتية: حل تدريجي يحتاج وقتاً لينضج.',
+        immediate: { budgetBalance: -2 }, medium: { infrastructureLevel: 1 }, long: { satisfaction: 2 } },
+      { label: 'ترك السوق دون تدخل حكومي', advisor: 'المستشار الاقتصادي: يحافظ على حرية السوق لكنه يفاقم أزمة السكن.',
+        immediate: { satisfaction: -2 }, medium: {}, long: {} }
+    ]
   }
 ];

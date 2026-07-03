@@ -23,6 +23,31 @@ function clampStat(v) { return Math.max(0, Math.min(100, v)); }
 
 function hasTrait(ch, traitId) { return ch.traits && ch.traits.includes(traitId); }
 
+// يربط فئة القرار بالوزارة المعنية به - يُستخدم لجعل نص "رأي المستشار" يعكس الوزير الفعلي المعيّن
+const CATEGORY_TO_MINISTRY = { economic: 'finance', security: 'defense', diplomatic: 'foreign', social: 'health', political: 'pm' };
+
+function getMinisterForCategory(state, category) {
+  const ministryId = CATEGORY_TO_MINISTRY[category];
+  if (!ministryId) return null;
+  const charId = state.cabinet[ministryId];
+  return charId ? getCharacter(state, charId) : null;
+}
+
+// يحوّل نص المستشار الثابت ("المستشار الاقتصادي: ...") إلى رأي الوزير الفعلي المعيّن حالياً في هذا المنصب،
+// مع لمسة تعكس نزاهته وكفاءته الحقيقيتين بدل نص عام لا يتغير مهما فعل اللاعب
+function resolveAdvisorText(state, decision, option) {
+  if (!option.advisor) return '';
+  const minister = getMinisterForCategory(state, decision.category);
+  if (!minister) return option.advisor; // المنصب شاغر - نُبقي النص العام كما هو
+
+  const colonIdx = option.advisor.indexOf(':');
+  const rest = colonIdx >= 0 ? option.advisor.slice(colonIdx + 1).trim() : option.advisor;
+  let bias = '';
+  if (minister.stats.corruption >= 60) bias = ' ⚠️ قد تخفي هذه النصيحة مصلحة شخصية.';
+  else if (minister.stats.competence >= 80) bias = ' ✓ تقييم يُعتد به من خبرة موثوقة.';
+  return `${minister.name} (${minister.role}): ${rest}${bias}`;
+}
+
 // استشارة شخصية - مجانية، ترفع الولاء قليلاً وتعطي رأياً
 function consultCharacter(state, charId) {
   const ch = getCharacter(state, charId);

@@ -231,5 +231,39 @@ const EVENTS = [
       { label: 'تنظيم مؤتمر كبير بدعوة استثمارية مباشرة', immediate: { budgetBalance: -1, forexReserves: 2500, internationalSupport: 2 } },
       { label: 'الاكتفاء بمبادرات تواصل رقمية محدودة', immediate: { internationalSupport: 1 } }
     ]
+  },
+
+  // ------- أحداث نتيجة إهمال الوضع السياسي الداخلي أو الدولي - تمنح شبكة العلاقات ثمناً حقيقياً -------
+  {
+    id: 'tribal_unrest', severity: 'crisis', category: 'security', title: 'اضطرابات في مناطق {target}', weight: 5, minMonth: 3,
+    description: 'بلغ استياء قبيلة {target} من تجاهل مطالبها حداً دفع شبابها للخروج في احتجاجات غاضبة وقطع طرق رئيسية في مناطق نفوذها.',
+    dynamicTarget: 'lowestTribeLoyalty',
+    cooldown: 8,
+    options: [
+      { label: 'إيفاد وفد مصالحة فوري وتلبية بعض المطالب', immediate: { budgetBalance: -2, security: -1 }, relationsEffect: { type: 'tribe', delta: 18 } },
+      { label: 'حملة أمنية لفتح الطرق وفرض النظام', immediate: { security: 2, satisfaction: -3 }, relationsEffect: { type: 'tribe', delta: -10 } },
+      { label: 'تجاهل الاحتجاجات باعتبارها مؤقتة', immediate: { satisfaction: -2 }, relationsEffect: { type: 'tribe', delta: -6 } }
+    ]
+  },
+  {
+    id: 'institution_legitimacy_crisis', severity: 'crisis', category: 'political', title: 'أزمة ثقة في {target}', weight: 3, minMonth: 6,
+    description: 'تصاعدت الانتقادات الموجهة إلى {target} بعد سلسلة قرارات مثيرة للجدل، وسط دعوات لإصلاحها أو حتى حلّها بالكامل.',
+    dynamicTarget: 'lowestInstitutionLegitimacy',
+    cooldown: 10,
+    options: [
+      { label: 'إطلاق مراجعة إصلاحية شفافة للمؤسسة', immediate: { budgetBalance: -2, politicalStability: 2 }, relationsEffect: { type: 'institution', delta: 15 } },
+      { label: 'تغيير قيادة المؤسسة دون إصلاح هيكلي', immediate: {}, relationsEffect: { type: 'institution', delta: 6 } },
+      { label: 'الدفاع عن المؤسسة دون تغيير', immediate: { satisfaction: -2 }, relationsEffect: { type: 'institution', delta: -8 } }
+    ]
+  },
+  {
+    id: 'party_walkout', severity: 'crisis', category: 'political', title: 'انسحاب تيار "{target}" من التوافق الحكومي', weight: 3, minMonth: 5,
+    description: 'أعلن قادة تيار "{target}" انسحابهم من دعم الحكومة احتجاجاً على تهميشهم في القرارات الأخيرة، في خطوة تنذر بأزمة سياسية أوسع.',
+    dynamicTarget: 'lowestPartySupport',
+    cooldown: 10,
+    options: [
+      { label: 'مفاوضات عاجلة لاحتواء الانسحاب', immediate: { politicalStability: -1 }, relationsEffect: { type: 'party', delta: 16 } },
+      { label: 'المضي قدماً بدون هذا التيار', immediate: { politicalStability: -4 }, relationsEffect: { type: 'party', delta: -5 } }
+    ]
   }
 ];

@@ -6,7 +6,8 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 2: + نظام الشخصيات (characters) ومجلس الوزراء (cabinet)
 // 3: + مؤشرات القطاعات الجديدة (agricultureLevel, tourismLevel, industryLevel, tradeBalance)
 // 4: + شبكة علاقات الشخصيات (characterRelations) ونظام المهام (missions) وحقل busyUntil لكل شخصية
-const CURRENT_SAVE_VERSION = 4;
+// 5: + مهلة تبريد للأحداث العشوائية (eventCooldowns) لمنع تكرارها المتتالي
+const CURRENT_SAVE_VERSION = 5;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -39,6 +40,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     ...initCharacterState(),
     scheduledEffects: [], // {applyAtMonth, effects}
     decisionCooldowns: {}, // id -> month usable again
+    eventCooldowns: {}, // id -> month usable again
     decisionsUsed: [], // oneTime ids used
     decisionsLog: [],
     eventsLog: [],
@@ -89,6 +91,13 @@ const SAVE_MIGRATIONS = {
     });
     s.version = 4;
     return s;
+  },
+  4: function migrateV4toV5(s) {
+    if (!s.eventCooldowns || typeof s.eventCooldowns !== 'object') {
+      s.eventCooldowns = {};
+    }
+    s.version = 5;
+    return s;
   }
 };
 
@@ -114,7 +123,7 @@ function validateStateShape(s) {
     ['budget', 'allocations'], ['economy', 'oilPrice'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
-    ['scheduledEffects'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
+    ['scheduledEffects'], ['eventCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']
   ];
   for (const path of requiredPaths) {
     let cur = s;
