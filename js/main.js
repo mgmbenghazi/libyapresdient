@@ -12,10 +12,32 @@ document.addEventListener('DOMContentLoaded', () => {
   bindGameScreen();
   bindEndScreen();
   bindBackButtons();
+  bindThemeToggle();
 
   const saved = loadGame();
   document.getElementById('btn-continue').disabled = !saved;
 });
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const icon = theme === 'light' ? '☀️' : '🌙';
+  const t1 = document.getElementById('btn-theme-toggle');
+  const t2 = document.getElementById('btn-theme-toggle-start');
+  if (t1) t1.textContent = icon;
+  if (t2) t2.textContent = icon + ' الوضع الليلي/النهاري';
+  localStorage.setItem('rayyes_libya_theme', theme);
+}
+
+function bindThemeToggle() {
+  const saved = localStorage.getItem('rayyes_libya_theme') || 'dark';
+  applyTheme(saved);
+  function toggle() {
+    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    applyTheme(current);
+  }
+  document.getElementById('btn-theme-toggle').addEventListener('click', toggle);
+  document.getElementById('btn-theme-toggle-start').addEventListener('click', toggle);
+}
 
 function bindBackButtons() {
   document.querySelectorAll('[data-back]').forEach(btn => {
@@ -58,6 +80,8 @@ function bindCharacterScreen() {
 
     Game.state = createInitialState(Game.selectedScenario, name, Game.selectedBackground, {});
     Game.state.history.push(snapshotIndicators(Game.state));
+    Game.prevIndicators = null;
+    document.getElementById('indicator-cards').innerHTML = '';
     renderIntro();
     showScreen('screen-intro');
   });

@@ -1,7 +1,12 @@
 // طبقة العرض - دوال بناء الواجهة من حالة اللعبة
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const target = document.getElementById(id);
+  target.classList.add('active');
+  target.classList.remove('screen-enter');
+  // إعادة تشغيل الرسم المتحرك للدخول في كل مرة تُعرض فيها الشاشة
+  void target.offsetWidth;
+  target.classList.add('screen-enter');
 }
 
 function fmtNum(n, decimals) {
@@ -58,22 +63,61 @@ function renderHUD() {
   document.getElementById('hud-date').textContent = `السنة ${s.year} - الشهر ${((s.month - 1) % 12) + 1} من ${s.month}/48`;
 }
 
+const INDICATOR_KEYS = ['satisfaction', 'budgetBalance', 'treasury', 'gdpGrowth', 'unemployment', 'inflation',
+  'publicDebt', 'forexReserves', 'poverty', 'politicalStability', 'internationalSupport',
+  'oilProduction', 'educationLevel', 'healthLevel', 'infrastructureLevel', 'security', 'economicDevelopment'];
+
 function renderIndicatorCards() {
   const s = Game.state;
   const wrap = document.getElementById('indicator-cards');
-  wrap.innerHTML = '';
-  const keys = ['satisfaction', 'budgetBalance', 'treasury', 'gdpGrowth', 'unemployment', 'inflation',
-    'publicDebt', 'forexReserves', 'poverty', 'politicalStability', 'internationalSupport',
-    'oilProduction', 'educationLevel', 'healthLevel', 'infrastructureLevel', 'security', 'economicDevelopment'];
-  keys.forEach(key => {
+  const isFirstRender = wrap.children.length === 0;
+  if (!Game.prevIndicators) Game.prevIndicators = {};
+
+  if (isFirstRender) {
+    wrap.innerHTML = '';
+    INDICATOR_KEYS.forEach(key => {
+      const meta = INDICATOR_META[key];
+      const val = s.indicators[key];
+      const card = document.createElement('div');
+      card.className = `ind-card ${indicatorColor(key, val)}`;
+      card.dataset.key = key;
+      card.innerHTML = `<div class="ind-name">${meta.name}</div><div class="ind-value" data-num>${fmtNum(val)}</div><div class="ind-unit">${meta.unit}</div>`;
+      wrap.appendChild(card);
+      Game.prevIndicators[key] = val;
+    });
+    return;
+  }
+
+  INDICATOR_KEYS.forEach(key => {
     const meta = INDICATOR_META[key];
-    const val = s.indicators[key];
-    const color = indicatorColor(key, val);
-    const card = document.createElement('div');
-    card.className = `ind-card ${color}`;
-    card.innerHTML = `<div class="ind-name">${meta.name}</div><div class="ind-value">${fmtNum(val)}</div><div class="ind-unit">${meta.unit}</div>`;
-    wrap.appendChild(card);
+    const newVal = s.indicators[key];
+    const oldVal = Game.prevIndicators[key] !== undefined ? Game.prevIndicators[key] : newVal;
+    const card = wrap.querySelector(`.ind-card[data-key="${key}"]`);
+    if (!card) return;
+    card.className = `ind-card ${indicatorColor(key, newVal)}`;
+    const numEl = card.querySelector('[data-num]');
+    if (Math.abs(newVal - oldVal) > 0.001) {
+      const good = meta.good === 'low' ? newVal < oldVal : newVal > oldVal;
+      card.classList.add(good ? 'flash-good' : 'flash-bad');
+      setTimeout(() => card.classList.remove('flash-good', 'flash-bad'), 1200);
+      animateNumber(numEl, oldVal, newVal, 600);
+    } else {
+      numEl.textContent = fmtNum(newVal);
+    }
+    Game.prevIndicators[key] = newVal;
   });
+}
+
+function animateNumber(el, from, to, duration) {
+  const start = performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const current = from + (to - from) * eased;
+    el.textContent = fmtNum(current);
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 function renderCharts() {
@@ -400,6 +444,21 @@ function renderReportModal(summary, onClose) {
   document.getElementById('modal-continue').addEventListener('click', () => { hideModal(); onClose(); });
 }
 
+function effectPreviewHtml(effects) {
+  if (!effects) return '';
+  const entries = Object.entries(effects).filter(([, v]) => Math.abs(v) > 0.001);
+  if (entries.length === 0) return '';
+  entries.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  const chips = entries.slice(0, 4).map(([key, delta]) => {
+    const meta = INDICATOR_META[key];
+    if (!meta) return '';
+    const good = meta.good === 'low' ? delta < 0 : delta > 0;
+    const sign = delta > 0 ? '+' : '';
+    return `<span class="effect-chip ${good ? 'chip-good' : 'chip-bad'}">${meta.name} ${sign}${fmtNum(delta)}</span>`;
+  }).join('');
+  return `<div class="effect-preview">${chips}</div>`;
+}
+
 function renderDecisionModal(decision, onChoose) {
   const html = `
     <span class="modal-tag">قرار ${decisionTypeLabel(decision.type)}</span>
@@ -410,6 +469,7 @@ function renderDecisionModal(decision, onChoose) {
         <div class="decision-option" data-idx="${i}">
           <div class="opt-label">${o.label}</div>
           ${o.advisor ? `<div class="opt-advisor">💬 ${o.advisor}</div>` : ''}
+          ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
   showModal(html);
@@ -435,6 +495,7 @@ function renderEventModal(event, onChoose) {
       ${event.options.map((o, i) => `
         <div class="decision-option" data-idx="${i}">
           <div class="opt-label">${o.label}</div>
+          ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
   showModal(html);
