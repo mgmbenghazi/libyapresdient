@@ -11,9 +11,18 @@ const SECTORS = [
 ];
 
 const REGIONS = [
-  { id: 'west', name: 'طرابلس والغرب' },
-  { id: 'east', name: 'بنغازي والشرق' },
-  { id: 'south', name: 'فزان والجنوب' }
+  { id: 'west', name: 'طرابلس والغرب', developmentWeight: 1.1 },
+  { id: 'east', name: 'بنغازي والشرق', developmentWeight: 1.0 },
+  { id: 'south', name: 'فزان والجنوب', developmentWeight: 0.8 }
+];
+
+// تجميع المؤشرات الـ21 إلى خمسة مجالات لعرضها في مركز القيادة بدل شبكة مسطحة موحدة
+const INDICATOR_DOMAINS = [
+  { id: 'macro', name: 'الاقتصاد الكلي', icon: '📈', keys: ['gdpGrowth', 'inflation', 'budgetBalance', 'publicDebt', 'treasury', 'forexReserves', 'economicDevelopment', 'unemployment'] },
+  { id: 'sectors', name: 'القطاعات الإنتاجية', icon: '🛢️', keys: ['oilProduction', 'agricultureLevel', 'tourismLevel', 'industryLevel'] },
+  { id: 'society', name: 'المجتمع والخدمات', icon: '🏛️', keys: ['satisfaction', 'poverty', 'educationLevel', 'healthLevel', 'infrastructureLevel'] },
+  { id: 'security', name: 'الأمن والاستقرار', icon: '🛡️', keys: ['security', 'politicalStability'] },
+  { id: 'international', name: 'المكانة الدولية', icon: '🌍', keys: ['internationalSupport', 'tradeBalance'] }
 ];
 
 // الحدود الدنيا/القصوى الافتراضية للمؤشرات (0-100 إلا ما استثني)
@@ -61,14 +70,36 @@ function clampIndicator(key, value) {
   return Math.max(meta.min, Math.min(meta.max, value));
 }
 
-function indicatorColor(key, value) {
+// يُرجع تقييماً موحداً 0-100 (100 = الأفضل دوماً، بصرف النظر عن كون "الأقل أفضل" أصلاً) -
+// مصدر واحد يُستخدم لتلوين البطاقات، ولحساب نقاط المجالات المركّبة، ولتحديد تنبيهات "يتطلب الانتباه"
+function normalizedIndicatorScore(key, value) {
   const meta = INDICATOR_META[key];
-  if (!meta || meta.max === Infinity || meta.min === -Infinity) {
-    return value >= 0 ? 'good' : 'bad';
+  if (!meta) return 50;
+  if (meta.max === Infinity || meta.min === -Infinity) {
+    // مؤشرات بلا سقف طبيعي (الخزينة، الاحتياطي) - تُقيَّم بمقياس تقريبي حول نقطة محايدة معقولة
+    if (key === 'treasury') return Math.max(0, Math.min(100, 50 + value / 500));
+    if (key === 'forexReserves') return Math.max(0, Math.min(100, value / 1400));
+    return value >= 0 ? 70 : 30;
   }
-  const pct = (value - meta.min) / (meta.max - meta.min);
-  const norm = meta.good === 'low' ? 1 - pct : pct;
-  if (norm >= 0.6) return 'good';
-  if (norm >= 0.35) return 'medium';
+  const pct = (value - meta.min) / (meta.max - meta.min) * 100;
+  const norm = meta.good === 'low' ? 100 - pct : pct;
+  return Math.max(0, Math.min(100, norm));
+}
+
+function indicatorColor(key, value) {
+  const norm = normalizedIndicatorScore(key, value);
+  if (norm >= 60) return 'good';
+  if (norm >= 35) return 'medium';
+  return 'bad';
+}
+
+function domainScore(state, domain) {
+  const scores = domain.keys.map(k => normalizedIndicatorScore(k, state.indicators[k]));
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
+function domainStatus(score) {
+  if (score >= 60) return 'good';
+  if (score >= 40) return 'medium';
   return 'bad';
 }

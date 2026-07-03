@@ -90,28 +90,84 @@
   </header>
 
   <main class="game-main">
-    <!-- تبويب لوحة المؤشرات -->
+    <!-- تبويب لوحة المؤشرات: مركز القيادة الرئاسي -->
     <div id="tab-dashboard" class="tab-panel active">
-      <div id="indicator-cards" class="indicator-grid"></div>
-      <div class="charts-row">
-        <div class="chart-box"><h3>رضا الشعب</h3><canvas id="chart-satisfaction"></canvas></div>
-        <div class="chart-box"><h3>الاقتصاد (النمو %)</h3><canvas id="chart-growth"></canvas></div>
-        <div class="chart-box"><h3>إنتاج النفط</h3><canvas id="chart-oil"></canvas></div>
-        <div class="chart-box"><h3>الميزان التجاري</h3><canvas id="chart-trade"></canvas></div>
+
+      <!-- شريط القيادة -->
+      <div class="command-bar">
+        <div class="president-block">
+          <div class="eyebrow">الرئاسة الليبية</div>
+          <div class="president-name" id="cmd-president-name"></div>
+          <div class="president-title" id="cmd-president-title"></div>
+          <div class="term-track">
+            <div class="tt-label"><span>الفترة الرئاسية</span><span id="cmd-term-label"></span></div>
+            <div class="tt-bar"><div class="tt-fill" id="cmd-term-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="gauge-wrap">
+          <div class="gauge" id="cmd-gauge">
+            <div class="gauge-inner">
+              <div class="gauge-num" id="cmd-gauge-num">0</div>
+              <div class="gauge-max">من 100</div>
+            </div>
+          </div>
+          <div class="gauge-label" id="cmd-gauge-label"></div>
+        </div>
+
+        <div class="status-block">
+          <div class="icon-row">
+            <div class="icon-chip" id="cmd-alerts-icon" title="التنبيهات النشطة">🔔<span class="badge-count" id="cmd-alerts-count"></span></div>
+            <div class="icon-chip" data-goto-tab="budget" title="الميزانية">💰</div>
+            <div class="icon-chip" data-goto-tab="characters" title="الحكومة والشخصيات">🗂️</div>
+            <div class="icon-chip" data-goto-tab="relations" title="العلاقات">🌍</div>
+          </div>
+          <div class="quicknav">
+            <span data-goto-tab="budget">الميزانية</span><span data-goto-tab="characters">الحكومة</span><span data-goto-tab="relations">العلاقات</span>
+          </div>
+        </div>
       </div>
-      <h3 style="margin-top:10px">خريطة ليبيا التفاعلية</h3>
-      <p class="hint">انقر على أي منطقة لعرض تفاصيلها. اللون يعكس متوسط ولاء القبائل والشخصيات في المنطقة.</p>
-      <div class="map-wrap">
-        <svg id="libya-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-          <path id="map-west" class="map-region" data-region="west" d="M20,40 L190,30 L200,170 L120,270 L30,220 Z"></path>
-          <path id="map-east" class="map-region" data-region="east" d="M200,30 L380,50 L370,210 L260,260 L200,170 Z"></path>
-          <path id="map-south" class="map-region" data-region="south" d="M30,220 L120,270 L200,170 L260,260 L200,290 L60,280 Z"></path>
-          <text x="90" y="140" class="map-label">الغرب</text>
-          <text x="290" y="140" class="map-label">الشرق</text>
-          <text x="150" y="255" class="map-label">الجنوب</text>
-        </svg>
+
+      <!-- شريط التنبيهات الحرجة -->
+      <div id="attention-section">
+        <h3 class="section-title"><span class="st-icon">⚠️</span> يتطلب انتباهك الآن</h3>
+        <div class="alert-strip" id="attention-strip"></div>
       </div>
-      <div class="regions-row" id="regions-row"></div>
+
+      <!-- عناقيد المجالات -->
+      <h3 class="section-title"><span class="st-icon">📊</span> المؤشرات حسب المجال</h3>
+      <div class="domain-grid" id="domain-grid"></div>
+
+      <!-- الخريطة + الاتجاهات -->
+      <div class="split-row">
+        <div class="panel-frame">
+          <h3 class="section-title" style="margin-bottom:8px">🗺️ الخريطة التفاعلية</h3>
+          <div class="layer-toggle" id="map-layer-toggle">
+            <span data-layer="loyalty" class="active">الولاء</span><span data-layer="security">الأمن</span><span data-layer="development">التنمية</span>
+          </div>
+          <div class="map-svg-wrap">
+            <svg id="libya-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+              <path id="map-west" class="map-region" data-region="west" d="M20,40 L190,30 L200,170 L120,270 L30,220 Z"></path>
+              <path id="map-east" class="map-region" data-region="east" d="M200,30 L380,50 L370,210 L260,260 L200,170 Z"></path>
+              <path id="map-south" class="map-region" data-region="south" d="M30,220 L120,270 L200,170 L260,260 L200,290 L60,280 Z"></path>
+              <text x="90" y="140" class="map-label">الغرب</text>
+              <text x="290" y="140" class="map-label">الشرق</text>
+              <text x="150" y="255" class="map-label">الجنوب</text>
+            </svg>
+          </div>
+          <div class="region-pulse-list" id="region-pulse-list"></div>
+        </div>
+
+        <div class="panel-frame">
+          <h3 class="section-title" style="margin-bottom:8px">📉 لوحة الاتجاهات</h3>
+          <div class="trend-chips" id="trend-chips"></div>
+          <canvas id="chart-trend" class="trend-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- شريط النشاط الحي -->
+      <h3 class="section-title"><span class="st-icon">🕓</span> آخر ما جرى</h3>
+      <div class="activity-ticker" id="activity-ticker"></div>
     </div>
 
     <!-- تبويب الميزانية -->
@@ -214,6 +270,7 @@
 <script src="js/systems/achievements.js"></script>
 <script src="js/systems/sound.js"></script>
 <script src="js/systems/gameover.js"></script>
+<script src="js/systems/dashboard.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

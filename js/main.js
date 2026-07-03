@@ -96,8 +96,9 @@ function bindStartScreen() {
       return;
     }
     Game.state = result.state;
-    Game.prevIndicators = null;
-    document.getElementById('indicator-cards').innerHTML = '';
+    Game.prevGovernanceScore = undefined;
+    Game.mapLayer = 'loyalty';
+    Game.selectedTrendKeys = ['satisfaction'];
     showScreen('screen-game');
     renderGameScreen();
   });
@@ -124,8 +125,9 @@ function bindCharacterScreen() {
 
     Game.state = createInitialState(Game.selectedScenario, name, Game.selectedBackground, {});
     Game.state.history.push(snapshotIndicators(Game.state));
-    Game.prevIndicators = null;
-    document.getElementById('indicator-cards').innerHTML = '';
+    Game.prevGovernanceScore = undefined;
+    Game.mapLayer = 'loyalty';
+    Game.selectedTrendKeys = ['satisfaction'];
     renderIntro();
     showScreen('screen-intro');
   });
@@ -162,6 +164,9 @@ function bindGameScreen() {
     document.getElementById('btn-next-month').disabled = true;
     advanceMonth();
   });
+
+  bindMapLayerToggle();
+  bindDashboardQuickNav();
 }
 
 function flashSaveButton() {

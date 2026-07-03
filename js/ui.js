@@ -63,72 +63,143 @@ function renderHUD() {
   document.getElementById('hud-date').textContent = `السنة ${s.year} - الشهر ${((s.month - 1) % 12) + 1} من ${s.month}/48`;
 }
 
-const INDICATOR_KEYS = ['satisfaction', 'budgetBalance', 'treasury', 'gdpGrowth', 'unemployment', 'inflation',
-  'publicDebt', 'forexReserves', 'poverty', 'politicalStability', 'internationalSupport',
-  'oilProduction', 'educationLevel', 'healthLevel', 'infrastructureLevel', 'security', 'economicDevelopment',
-  'agricultureLevel', 'tourismLevel', 'industryLevel', 'tradeBalance'];
-
-function renderIndicatorCards() {
-  const s = Game.state;
-  const wrap = document.getElementById('indicator-cards');
-  const isFirstRender = wrap.children.length === 0;
-  if (!Game.prevIndicators) Game.prevIndicators = {};
-
-  if (isFirstRender) {
-    wrap.innerHTML = '';
-    INDICATOR_KEYS.forEach(key => {
-      const meta = INDICATOR_META[key];
-      const val = s.indicators[key];
-      const card = document.createElement('div');
-      card.className = `ind-card ${indicatorColor(key, val)}`;
-      card.dataset.key = key;
-      card.innerHTML = `<div class="ind-name">${meta.name}</div><div class="ind-value" data-num>${fmtNum(val)}</div><div class="ind-unit">${meta.unit}</div>`;
-      wrap.appendChild(card);
-      Game.prevIndicators[key] = val;
-    });
-    return;
-  }
-
-  INDICATOR_KEYS.forEach(key => {
-    const meta = INDICATOR_META[key];
-    const newVal = s.indicators[key];
-    const oldVal = Game.prevIndicators[key] !== undefined ? Game.prevIndicators[key] : newVal;
-    const card = wrap.querySelector(`.ind-card[data-key="${key}"]`);
-    if (!card) return;
-    card.className = `ind-card ${indicatorColor(key, newVal)}`;
-    const numEl = card.querySelector('[data-num]');
-    if (Math.abs(newVal - oldVal) > 0.001) {
-      const good = meta.good === 'low' ? newVal < oldVal : newVal > oldVal;
-      card.classList.add(good ? 'flash-good' : 'flash-bad');
-      setTimeout(() => card.classList.remove('flash-good', 'flash-bad'), 1200);
-      animateNumber(numEl, oldVal, newVal, 600);
-    } else {
-      numEl.textContent = fmtNum(newVal);
-    }
-    Game.prevIndicators[key] = newVal;
-  });
-}
-
 function animateNumber(el, from, to, duration) {
   const start = performance.now();
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);
     const eased = 1 - Math.pow(1 - t, 3);
     const current = from + (to - from) * eased;
-    el.textContent = fmtNum(current);
+    el.textContent = Math.round(current);
     if (t < 1) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }
 
-function renderCharts() {
-  const hist = Game.state.history;
-  drawLineChart(document.getElementById('chart-satisfaction'), hist.map(h => h.satisfaction), { color: '#3fbf5e', min: 0, max: 100 });
-  drawLineChart(document.getElementById('chart-growth'), hist.map(h => h.gdpGrowth), { color: '#C9A227' });
-  drawLineChart(document.getElementById('chart-oil'), hist.map(h => h.oilProduction), { color: '#4aa8e0' });
-  drawLineChart(document.getElementById('chart-trade'), hist.map(h => h.tradeBalance), { color: '#e07a4a' });
+// ------- شريط القيادة -------
+function renderCommandBar() {
+  const s = Game.state;
+  const scenario = SCENARIOS.find(sc => sc.id === s.scenarioId);
+  const background = POLITICAL_BACKGROUNDS.find(b => b.id === s.backgroundId);
+  document.getElementById('cmd-president-name').textContent = `الرئيس ${s.presidentName}`;
+  document.getElementById('cmd-president-title').textContent =
+    `${scenario ? scenario.name : ''}${background ? ' · خلفية ' + background.name : ''}`;
+  const monthInYear = ((s.month - 1) % 12) + 1;
+  document.getElementById('cmd-term-label').textContent = `السنة ${s.year} — الشهر ${monthInYear} من ${s.month}/48`;
+  document.getElementById('cmd-term-fill').style.width = Math.min(100, (s.month / 48) * 100) + '%';
+
+  const score = computeFinalScore(s);
+  const verdict = getGovernanceVerdict(score);
+  const gaugeNumEl = document.getElementById('cmd-gauge-num');
+  const prevScore = Game.prevGovernanceScore !== undefined ? Game.prevGovernanceScore : score;
+  if (Math.abs(score - prevScore) > 0.5) animateNumber(gaugeNumEl, prevScore, score, 700);
+  else gaugeNumEl.textContent = Math.round(score);
+  Game.prevGovernanceScore = score;
+
+  const gaugeEl = document.getElementById('cmd-gauge');
+  const statusColorVar = verdict.status === 'good' ? 'var(--good)' : verdict.status === 'medium' ? 'var(--medium)' : 'var(--bad)';
+  gaugeEl.style.background = `conic-gradient(${statusColorVar} calc(${score} * 1%), rgba(128,128,128,.18) 0)`;
+  const gaugeLabelEl = document.getElementById('cmd-gauge-label');
+  gaugeLabelEl.textContent = `مؤشر الحوكمة — ${verdict.label}`;
+  gaugeLabelEl.className = `gauge-label ${verdict.status}`;
 }
 
+// ------- شريط "يتطلب انتباهك الآن" -------
+function renderAttentionStrip() {
+  const s = Game.state;
+  const alerts = getAttentionAlerts(s, 4);
+  const section = document.getElementById('attention-section');
+  const wrap = document.getElementById('attention-strip');
+  const countBadge = document.getElementById('cmd-alerts-count');
+
+  countBadge.style.display = alerts.length ? '' : 'none';
+  countBadge.textContent = alerts.length;
+  section.style.display = alerts.length ? '' : 'none';
+  if (!alerts.length) return;
+
+  wrap.innerHTML = alerts.map(a => {
+    const meta = INDICATOR_META[a.key];
+    const sign = a.delta > 0 ? '+' : '';
+    return `<div class="alert-chip ${a.severity}" data-key="${a.key}">
+      <span class="alert-dot"></span> ${meta.name}: ${fmtNum(a.value)}${meta.unit === '%' ? '%' : ''}
+      <span class="ac-delta">(${sign}${fmtNum(a.delta)})</span>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.alert-chip').forEach(el => {
+    el.addEventListener('click', () => openIndicatorDetailModal(el.dataset.key));
+  });
+}
+
+// ------- عناقيد المجالات -------
+function sparklineColor(key) {
+  const status = indicatorColor(key, Game.state.indicators[key]);
+  return status === 'good' ? '#3fbf5e' : status === 'medium' ? '#e0a72b' : '#e5484d';
+}
+
+function metricRowHtml(key) {
+  const meta = INDICATOR_META[key];
+  const val = Game.state.indicators[key];
+  const hist = Game.state.history;
+  const prev = hist.length > 1 ? hist[hist.length - 2][key] : val;
+  const delta = val - prev;
+  const deltaGood = meta.good === 'low' ? delta < 0 : delta > 0;
+  const deltaCls = Math.abs(delta) < 0.05 ? 'flat' : (deltaGood ? 'up' : 'down');
+  const arrow = Math.abs(delta) < 0.05 ? '~' : (delta > 0 ? '↑' : '↓');
+  return `
+    <div class="metric-row" data-key="${key}">
+      <div class="metric-name">${meta.name}</div>
+      <canvas class="spark" data-spark="${key}" width="54" height="22"></canvas>
+      <div class="metric-value">${fmtNum(val)}</div>
+      <div class="metric-delta ${deltaCls}">${arrow}${fmtNum(Math.abs(delta))}</div>
+    </div>`;
+}
+
+function renderDomainGrid() {
+  const s = Game.state;
+  const wrap = document.getElementById('domain-grid');
+  wrap.innerHTML = INDICATOR_DOMAINS.map(domain => {
+    const score = domainScore(s, domain);
+    const status = domainStatus(score);
+    return `
+      <div class="domain-panel">
+        <div class="domain-head">
+          <div class="domain-head-left"><div class="domain-icon ${status}">${domain.icon}</div><div class="domain-title">${domain.name}</div></div>
+          <div class="domain-score ${status}">${score}</div>
+        </div>
+        <div class="metric-list">${domain.keys.map(metricRowHtml).join('')}</div>
+      </div>`;
+  }).join('');
+
+  INDICATOR_DOMAINS.flatMap(d => d.keys).forEach(key => {
+    const canvas = wrap.querySelector(`canvas[data-spark="${key}"]`);
+    if (!canvas) return;
+    const series = s.history.slice(-10).map(h => h[key]);
+    drawSparkline(canvas, series, sparklineColor(key));
+  });
+  wrap.querySelectorAll('.metric-row').forEach(row => {
+    row.addEventListener('click', () => openIndicatorDetailModal(row.dataset.key));
+  });
+}
+
+function openIndicatorDetailModal(key) {
+  const s = Game.state;
+  const meta = INDICATOR_META[key];
+  if (!meta) return;
+  const val = s.indicators[key];
+  const status = indicatorColor(key, val);
+  const lineColor = status === 'good' ? '#3fbf5e' : status === 'medium' ? '#e0a72b' : '#e5484d';
+  const html = `
+    <span class="modal-tag">مؤشر</span>
+    <h2>${meta.name}</h2>
+    <div class="ind-detail-value ${status}">${fmtNum(val)}<span class="ind-detail-unit">${meta.unit}</span></div>
+    <div class="char-stats-grid" style="grid-template-columns:1fr">${statMiniBar('التقييم العام', normalizedIndicatorScore(key, val))}</div>
+    <div class="chart-box" style="margin-top:14px;padding:0"><canvas id="ind-detail-chart"></canvas></div>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">إغلاق</button></div>`;
+  showModal(html);
+  document.getElementById('modal-continue').addEventListener('click', hideModal);
+  drawLineChart(document.getElementById('ind-detail-chart'), s.history.map(h => h[key]), { color: lineColor });
+}
+
+// ------- الخريطة التفاعلية بطبقات -------
 function regionAverageLoyalty(state, regionId) {
   const tribesInRegion = state.relations.tribes.filter(t => t.region === regionId);
   const charsInRegion = state.characters.filter(c => c.region === regionId);
@@ -136,29 +207,124 @@ function regionAverageLoyalty(state, regionId) {
   return values.length ? values.reduce((a, v) => a + v, 0) / values.length : 50;
 }
 
-function renderRegions() {
-  const s = Game.state;
-  const wrap = document.getElementById('regions-row');
-  wrap.innerHTML = '';
-  REGIONS.forEach(r => {
-    const avgLoyalty = regionAverageLoyalty(s, r.id);
-    const div = document.createElement('div');
-    div.className = 'region-card';
-    div.innerHTML = `<div class="rname">${r.name}</div><div class="region-bar"><div class="region-bar-fill" style="width:${avgLoyalty}%"></div></div><div style="margin-top:4px;font-size:.8rem;color:var(--text-dim)">الولاء: ${fmtNum(avgLoyalty, 0)}%</div>`;
-    wrap.appendChild(div);
-  });
-  renderLibyaMap();
-}
-
 function renderLibyaMap() {
   const s = Game.state;
+  const layer = Game.mapLayer || 'loyalty';
   REGIONS.forEach(r => {
     const el = document.getElementById('map-' + r.id);
     if (!el) return;
-    const avgLoyalty = regionAverageLoyalty(s, r.id);
+    const val = regionLayerValue(s, r.id, layer);
     el.classList.remove('good', 'medium', 'bad');
-    el.classList.add(indicatorColor('satisfaction', avgLoyalty));
+    el.classList.add(indicatorColor('satisfaction', val));
     el.onclick = () => openRegionModal(r.id);
+  });
+  renderRegionPulseList();
+}
+
+function renderRegionPulseList() {
+  const s = Game.state;
+  const layer = Game.mapLayer || 'loyalty';
+  const wrap = document.getElementById('region-pulse-list');
+  if (!wrap) return;
+  wrap.innerHTML = REGIONS.map(r => {
+    const val = regionLayerValue(s, r.id, layer);
+    const color = `var(--${indicatorColor('satisfaction', val)})`;
+    return `<div class="region-pulse-item"><span class="rp-name">${r.name}</span><div class="rp-bar"><div class="rp-fill" style="width:${val}%;background:${color}"></div></div><span class="rp-val">${Math.round(val)}</span></div>`;
+  }).join('');
+}
+
+function bindMapLayerToggle() {
+  document.querySelectorAll('#map-layer-toggle span').forEach(el => {
+    el.addEventListener('click', () => {
+      Game.mapLayer = el.dataset.layer;
+      document.querySelectorAll('#map-layer-toggle span').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+      renderLibyaMap();
+    });
+  });
+}
+
+// ------- لوحة الاتجاهات القابلة للاختيار -------
+const TREND_CANDIDATES = [
+  { key: 'satisfaction', label: 'رضا الشعب' },
+  { key: 'politicalStability', label: 'الاستقرار' },
+  { key: 'security', label: 'الأمن' },
+  { key: 'publicDebt', label: 'الدين العام' },
+  { key: 'gdpGrowth', label: 'النمو الاقتصادي' },
+  { key: 'unemployment', label: 'البطالة' },
+  { key: 'internationalSupport', label: 'الدعم الدولي' },
+  { key: 'oilProduction', label: 'إنتاج النفط' }
+];
+const TREND_COLORS = ['#3fbf5e', '#c9a227', '#4aa8e0', '#e5484d'];
+
+function renderTrendChips() {
+  const wrap = document.getElementById('trend-chips');
+  if (!wrap) return;
+  if (!Game.selectedTrendKeys) Game.selectedTrendKeys = ['satisfaction'];
+  wrap.innerHTML = TREND_CANDIDATES.map(t =>
+    `<span class="${Game.selectedTrendKeys.includes(t.key) ? 'active' : ''}" data-key="${t.key}">${t.label}</span>`
+  ).join('');
+  wrap.querySelectorAll('span').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.key;
+      const idx = Game.selectedTrendKeys.indexOf(key);
+      if (idx >= 0) {
+        if (Game.selectedTrendKeys.length > 1) Game.selectedTrendKeys.splice(idx, 1);
+      } else if (Game.selectedTrendKeys.length < 4) {
+        Game.selectedTrendKeys.push(key);
+      }
+      renderTrendChips();
+      renderTrendChart();
+    });
+  });
+}
+
+function renderTrendChart() {
+  const canvas = document.getElementById('chart-trend');
+  if (!canvas) return;
+  const keys = Game.selectedTrendKeys || ['satisfaction'];
+  const seriesList = keys.map(k => Game.state.history.map(h => h[k]));
+  drawMultiLineChart(canvas, seriesList, TREND_COLORS);
+}
+
+// ------- شريط النشاط الحي -------
+function renderActivityTicker() {
+  const s = Game.state;
+  const wrap = document.getElementById('activity-ticker');
+  if (!wrap) return;
+  const combined = [
+    ...s.decisionsLog.map(d => ({ ...d, kind: 'decision' })),
+    ...s.eventsLog.map(e => ({ ...e, kind: 'event' }))
+  ].sort((a, b) => b.month - a.month).slice(0, 4);
+
+  if (combined.length === 0) {
+    wrap.innerHTML = '<p class="hint" style="padding:14px">لا يوجد نشاط بعد.</p>';
+    return;
+  }
+  wrap.innerHTML = combined.map(item => {
+    const icon = item.kind === 'decision' ? '📜' : '⚡';
+    const bg = item.kind === 'decision' ? 'var(--good-glow)' : 'var(--medium-glow)';
+    const kindLabel = item.kind === 'decision' ? 'قرار' : 'حدث';
+    return `<div class="activity-item">
+      <div class="activity-icon" style="background:${bg}">${icon}</div>
+      <div class="activity-text"><b>${kindLabel}:</b> ${item.title} — ${item.optionLabel}</div>
+      <div class="activity-time">الشهر ${item.month}</div>
+    </div>`;
+  }).join('');
+}
+
+// ------- وصول سريع من شريط القيادة -------
+function bindDashboardQuickNav() {
+  document.querySelectorAll('[data-goto-tab]').forEach(el => {
+    el.addEventListener('click', () => {
+      const btn = document.querySelector(`.tab-btn[data-tab="${el.dataset.gotoTab}"]`);
+      if (btn) btn.click();
+    });
+  });
+  const alertsIcon = document.getElementById('cmd-alerts-icon');
+  if (alertsIcon) alertsIcon.addEventListener('click', () => {
+    const section = document.getElementById('attention-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
 
@@ -344,9 +510,13 @@ function renderLogTab() {
 
 function renderGameScreen() {
   renderHUD();
-  renderIndicatorCards();
-  renderCharts();
-  renderRegions();
+  renderCommandBar();
+  renderAttentionStrip();
+  renderDomainGrid();
+  renderLibyaMap();
+  renderTrendChips();
+  renderTrendChart();
+  renderActivityTicker();
   renderBudgetTab();
   renderCabinetGrid();
   renderCharacterFilters();
@@ -557,7 +727,7 @@ function refreshCharModal(charId, opinionHtml) {
   showModal(characterModalHtml(ch));
   if (opinionHtml) document.getElementById('char-opinion-slot').innerHTML = opinionHtml;
   bindCharacterModalActions(charId);
-  renderCabinetGrid(); renderCharacterGrid(); renderIndicatorCards();
+  renderCabinetGrid(); renderCharacterGrid(); renderCommandBar(); renderAttentionStrip(); renderDomainGrid();
 }
 
 function openAssignModal(ministryId, preselectedCharId) {
