@@ -1,6 +1,12 @@
 // المحرك الاقتصادي - يُحسب مرة كل شهر لعبة
 function rnd(min, max) { return Math.random() * (max - min) + min; }
 
+// تسرّب التهريب الشهري التقديري لدعم الوقود - دالة نقية تُستخدم من المعاينة الحية في الواجهة ومن الدورة الشهرية الفعلية معاً
+function estimateSmugglingLeakage(state) {
+  const oilPriceFactor = state.economy.oilPrice / 100;
+  return Math.pow(state.macroPolicy.fuelSubsidyLevel / 100, 2) * 700 * oilPriceFactor;
+}
+
 // تقدير الإيرادات الشهرية بناءً على الحالة الراهنة - دالة نقية بلا أي تعديل على الحالة
 // تُستخدم لعرض معاينة حية في تبويب الميزانية، وأيضاً من داخل monthlyEconomicTick نفسها لضمان تطابق المعاينة مع الواقع
 // كل قطاع إنتاجي يُولّد عائداً مباشراً يعكس نموذج ملكيته: الدولة تحصل على العائد كاملاً إن أدارته بنفسها،
@@ -8,6 +14,7 @@ function rnd(min, max) { return Math.random() * (max - min) + min; }
 function estimateMonthlyRevenue(state) {
   const ind = state.indicators;
   const sp = state.sectorPolicies;
+  const macro = state.macroPolicy;
   const oilPriceFactor = state.economy.oilPrice / 100;
   const oilShare = OWNERSHIP_PROFILES[sp.oil.ownership].revenueShare;
   const agriShare = OWNERSHIP_PROFILES[sp.agriculture.ownership].revenueShare;
@@ -21,9 +28,23 @@ function estimateMonthlyRevenue(state) {
   const sectorRevenue = agricultureRevenue + tourismRevenue + industryRevenue;
 
   const nonOilBoost = 1 + ((ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3) / 200;
-  const taxRevenue = (ind.economicDevelopment * 25) * (1 - ind.unemployment / 150) * nonOilBoost;
+  // ثلاث ضرائب دائمة بدل رقم ضريبي واحد ثابت - كل معدل يُضبط من تبويب السياسة الاقتصادية ويُقرأ هنا فعلياً
+  const businessBase = (ind.industryLevel + ind.economicDevelopment) / 2;
+  const corporateTaxRevenue = businessBase * (macro.corporateTaxRate / 100) * 60;
+  const consumptionBase = ind.economicDevelopment * (1 - ind.unemployment / 150) * nonOilBoost;
+  const consumptionTaxRevenue = consumptionBase * (macro.consumptionTaxRate / 100) * 111;
+  const tradeBase = ((ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3) + ind.oilProduction / 50;
+  const customsRevenue = tradeBase * (macro.customsTariffRate / 100) * 35;
+  const taxRevenue = corporateTaxRevenue + consumptionTaxRevenue + customsRevenue;
+
+  // دعم أسعار المحروقات المحلية: سطر إنفاق مستقل تماماً عن شريحة "الدعم" العامة في الميزانية -
+  // كلفته الفعلية تتناسب مع حجم الاقتصاد وسعر النفط العالمي (الفجوة بين السعر المدعوم والعالمي)
+  const domesticFuelBase = 400 + ind.economicDevelopment * 3;
+  const fuelSubsidyCost = domesticFuelBase * (macro.fuelSubsidyLevel / 100) * oilPriceFactor;
+
   return {
-    oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue,
+    oilRevenue, corporateTaxRevenue, consumptionTaxRevenue, customsRevenue, taxRevenue,
+    agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, fuelSubsidyCost,
     totalRevenue: oilRevenue + taxRevenue + sectorRevenue
   };
 }
@@ -31,6 +52,7 @@ function estimateMonthlyRevenue(state) {
 // تقدير كامل للميزانية الشهرية: كل شريحة تمثل نسبتها المئوية مباشرة من الإيرادات المتوقعة -
 // فمجموع 100% يعني ميزانية متوازنة تماماً (إنفاق = إيراد)، وما دون ذلك فائض وما فوقه عجز.
 // هذا هو المصدر الوحيد لحساب الإنفاق، مستخدم من المعاينة الحية في الواجهة ومن الدورة الشهرية الفعلية معاً.
+// كلفة دعم الوقود تُضاف فوق بنود التخصيص - وليست جزءاً منها - لأنها سطر مستقل تماماً في السياسة الكلية
 function estimateBudget(state) {
   const revenue = estimateMonthlyRevenue(state);
   const alloc = state.budget.allocations;
@@ -39,8 +61,9 @@ function estimateBudget(state) {
   Object.keys(alloc).forEach(key => {
     spendBySector[key] = revenue.totalRevenue * (alloc[key] / 100);
   });
-  const totalExpenditure = Object.values(spendBySector).reduce((a, b) => a + b, 0);
-  return { ...revenue, totalAllocPct, spendBySector, totalExpenditure, balance: revenue.totalRevenue - totalExpenditure };
+  const allocExpenditure = Object.values(spendBySector).reduce((a, b) => a + b, 0);
+  const totalExpenditure = allocExpenditure + revenue.fuelSubsidyCost;
+  return { ...revenue, totalAllocPct, spendBySector, allocExpenditure, totalExpenditure, balance: revenue.totalRevenue - totalExpenditure };
 }
 
 function monthlyEconomicTick(state) {
@@ -55,7 +78,8 @@ function monthlyEconomicTick(state) {
   // 2+3+4) الإيرادات والإنفاق - كل شريحة ميزانية تُحسب كنسبة مباشرة من الإيرادات الفعلية،
   // بحيث يعكس تعديل الأشرطة فعلياً حجم الإنفاق الكلي (لا مجرد إعادة توزيع لمجموع ثابت)
   const budget = estimateBudget(state);
-  const { oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, totalRevenue, totalExpenditure } = budget;
+  const { oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, fuelSubsidyCost, totalRevenue, totalExpenditure } = budget;
+  const macro = state.macroPolicy;
 
   const monthlyBalance = totalRevenue - totalExpenditure; // مليون د.ل
   ind.treasury += monthlyBalance;
@@ -104,18 +128,54 @@ function monthlyEconomicTick(state) {
   const subsidyPressure = (fairShare - alloc.subsidies) / fairShare;
   ind.inflation = clampIndicator('inflation', ind.inflation + (monthlyBalance < 0 ? 0.15 : -0.05) + subsidyPressure * 0.1 + rnd(-0.2, 0.2));
 
+  // 6ب) آثار جانبية لمعدلات الضرائب الثلاثة تتجاوز الإيراد المباشر - معدل 20/8/15% هو الحياد المرجعي
+  const corporateTaxDrag = (macro.corporateTaxRate - 20) / 100;
+  ind.economicDevelopment = clampIndicator('economicDevelopment', ind.economicDevelopment - corporateTaxDrag * 0.3);
+  ind.industryLevel = clampIndicator('industryLevel', ind.industryLevel - corporateTaxDrag * 0.2);
+  const consumptionTaxBurden = Math.max(0, (macro.consumptionTaxRate - 8) / 100);
+  ind.poverty = clampIndicator('poverty', ind.poverty + consumptionTaxBurden * 0.4);
+  const tariffProtection = (macro.customsTariffRate - 15) / 100;
+  ind.industryLevel = clampIndicator('industryLevel', ind.industryLevel + tariffProtection * 0.25);
+  ind.inflation = clampIndicator('inflation', ind.inflation + Math.max(0, tariffProtection) * 0.3);
+
   // 7) احتياطي النقد الأجنبي والدين العام - وجهة إنتاج النفط (تصدير مقابل استخدام محلي) تُحدد كم من عوائده يتحول لاحتياطي أجنبي
   const oilExportMult = 0.08 + (sp.oil.orientation / 100) * 0.14;
   ind.forexReserves = Math.max(0, ind.forexReserves + oilRevenue * oilExportMult - (ind.publicDebt > 60 ? 500 : 0) + rnd(-500, 500));
+
+  // دعم الوقود: تسرّب تهريب يتصاعد بشكل غير خطي مع اتساع الفجوة بين السعر المحلي المدعوم والعالمي
+  const smugglingLeakage = estimateSmugglingLeakage(state);
+  ind.forexReserves = Math.max(0, ind.forexReserves - smugglingLeakage);
+
+  // صدمة خفض مفاجئ لدعم الوقود: خفض حاد في شهر واحد يضرب الرضا والاستقرار مباشرة - التخفيض التدريجي آمن
+  // (تُحسب هنا وتُطبَّق لاحقاً بعد إعادة حساب الرضا والاستقرار في الخطوتين 9 و10، وإلا ابتلعها المتوسط المرجّح فوراً)
+  if (macro._prevFuelSubsidy === undefined) macro._prevFuelSubsidy = macro.fuelSubsidyLevel;
+  const fuelDrop = macro._prevFuelSubsidy - macro.fuelSubsidyLevel;
+  const fuelShockMagnitude = fuelDrop > 15 ? (fuelDrop - 15) * 0.4 : 0;
+  macro._prevFuelSubsidy = macro.fuelSubsidyLevel;
+
+  // استراتيجية تمويل العجز: داخلي (تضخمي أكثر) / خارجي (دين أسرع نمواً لكنه يدعم الاحتياطي ويقرّب من صندوق النقد) / تقشف (يؤلم الرضا لكن يبقي الدين منضبطاً)
+  let austerityPenalty = 0;
   if (monthlyBalance < 0) {
-    ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + Math.abs(monthlyBalance) / Math.max(totalRevenue, 1) * 2);
+    const deficitRatio = Math.abs(monthlyBalance) / Math.max(totalRevenue, 1);
+    if (macro.debtStrategy === 'external') {
+      ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + deficitRatio * 3);
+      ind.forexReserves = Math.max(0, ind.forexReserves + deficitRatio * 400);
+      const imf = state.relations.orgs.find(o => o.id === 'imf');
+      if (imf) imf.relation = Math.max(0, Math.min(100, imf.relation + 0.3));
+    } else if (macro.debtStrategy === 'austerity') {
+      ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + deficitRatio * 0.8);
+      austerityPenalty = deficitRatio * 3;
+    } else {
+      ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + deficitRatio * 2.2);
+      ind.inflation = clampIndicator('inflation', ind.inflation + deficitRatio * 1.5);
+    }
   } else {
     ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt - 0.1);
   }
 
-  // 8) الفقر يتأثر بالبطالة والتضخم ودعم السلع، وباكتفاء القطاع الزراعي ذاتياً بدل التصدير
+  // 8) الفقر يتأثر بالبطالة والتضخم ودعم السلع، وباكتفاء القطاع الزراعي ذاتياً بدل التصدير، ودعم الوقود يخفف عبء الفقراء مباشرة
   const agriSelfSufficiency = 1 - sp.agriculture.orientation / 100;
-  ind.poverty = clampIndicator('poverty', ind.poverty + (ind.unemployment - 20) * 0.02 + (ind.inflation - 6) * 0.03 - subsidyPressure * -0.1 - agriSelfSufficiency * 0.12);
+  ind.poverty = clampIndicator('poverty', ind.poverty + (ind.unemployment - 20) * 0.02 + (ind.inflation - 6) * 0.03 - subsidyPressure * -0.1 - agriSelfSufficiency * 0.12 - (macro.fuelSubsidyLevel / 100) * 0.15);
 
   // 9) الرضا الشعبي العام - متوسط مرجّح لعدة مؤشرات
   const satisfactionTarget = (
@@ -131,6 +191,15 @@ function monthlyEconomicTick(state) {
 
   // 10) الاستقرار السياسي يتأثر بالرضا والأمن
   ind.politicalStability = clampIndicator('politicalStability', ind.politicalStability * 0.92 + (ind.satisfaction * 0.5 + ind.security * 0.5) * 0.08);
+
+  // تُطبَّق صدمة خفض دعم الوقود وعقوبة التقشف هنا - بعد إعادة حساب الرضا والاستقرار، لا قبلها، وإلا ابتلعهما المتوسط المرجّح
+  if (fuelShockMagnitude > 0) {
+    ind.satisfaction = clampIndicator('satisfaction', ind.satisfaction - fuelShockMagnitude);
+    ind.politicalStability = clampIndicator('politicalStability', ind.politicalStability - fuelShockMagnitude * 0.6);
+  }
+  if (austerityPenalty > 0) {
+    ind.satisfaction = clampIndicator('satisfaction', ind.satisfaction - austerityPenalty);
+  }
 
   // 11) الأمن يتراجع قليلاً بشكل طبيعي دون صيانة (entropy)
   ind.security = clampIndicator('security', ind.security - 0.15);
@@ -149,11 +218,11 @@ function monthlyEconomicTick(state) {
 
   const nonOilDiversification = (ind.agricultureLevel + ind.tourismLevel + ind.industryLevel) / 3;
   ind.economicDevelopment = clampIndicator('economicDevelopment', ind.economicDevelopment + (nonOilDiversification - 50) / 800);
-  // ميزان التجارة: تُضاف إليه وجهة الإنتاج المتوسطة (تصدير مقابل سوق محلي) عبر النفط والزراعة والصناعة معاً
+  // ميزان التجارة: تُضاف إليه وجهة الإنتاج المتوسطة (تصدير مقابل سوق محلي) عبر النفط والزراعة والصناعة، وخطر انتقام تجاري من تعرفة جمركية مرتفعة
   const exportOrientationAvg = (sp.oil.orientation + sp.agriculture.orientation + sp.industry.orientation) / 3;
-  ind.tradeBalance = clampIndicator('tradeBalance', ind.tradeBalance * 0.9 + ((oilPriceFactor - 1) * 15 + (nonOilDiversification - 40) / 4 + (exportOrientationAvg - 50) / 8) * 0.1 + rnd(-0.5, 0.5));
+  ind.tradeBalance = clampIndicator('tradeBalance', ind.tradeBalance * 0.9 + ((oilPriceFactor - 1) * 15 + (nonOilDiversification - 40) / 4 + (exportOrientationAvg - 50) / 8 - Math.max(0, tariffProtection) * 3) * 0.1 + rnd(-0.5, 0.5));
 
-  return { oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, totalRevenue, totalExpenditure, monthlyBalance };
+  return { oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, fuelSubsidyCost, totalRevenue, totalExpenditure, monthlyBalance };
 }
 
 function applyEffects(state, effects) {

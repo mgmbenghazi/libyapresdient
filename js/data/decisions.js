@@ -139,15 +139,15 @@ const DECISIONS = [
   },
   {
     id: 'tax_system', category: 'economic', type: 'tactical', title: 'مراجعة النظام الضريبي',
-    description: 'يرى مستشاروك أن النظام الضريبي الحالي غير فعال في تحصيل الإيرادات.',
+    description: 'يرى مستشاروك أن النظام الضريبي الحالي غير فعال في تحصيل الإيرادات. القرار يضبط معدل ضريبة الشركات الدائم من تبويب "الاقتصاد ← السياسة الاقتصادية"، لا أثراً لمرة واحدة فقط.',
     minMonth: 8, cooldown: 12,
     options: [
-      { label: 'رفع الضرائب على الشركات الكبرى', advisor: 'المستشار الاقتصادي: يرفع الإيرادات دون التأثير المباشر على المواطن العادي.',
-        immediate: { budgetBalance: 5, economicDevelopment: -1 }, medium: {}, long: {} },
-      { label: 'تبسيط الإجراءات الضريبية ومكافحة التهرب', advisor: 'المستشار الاقتصادي: يحسن التحصيل بدون رفع النسب.',
+      { label: 'رفع الضرائب على الشركات الكبرى', advisor: 'المستشار الاقتصادي: يرفع الإيرادات دون التأثير المباشر على المواطن العادي، لكنه يُبطئ نمو الصناعة تدريجياً.',
+        immediate: {}, medium: {}, long: {}, macroPolicyEffect: { rateKey: 'corporateTaxRate', delta: 8 } },
+      { label: 'تبسيط الإجراءات الضريبية ومكافحة التهرب', advisor: 'المستشار الاقتصادي: يحسن التحصيل بدون رفع النسب الرسمية.',
         immediate: { budgetBalance: 2 }, medium: { budgetBalance: 3 }, long: {} },
-      { label: 'الإبقاء على النظام الحالي', advisor: 'المستشار الاقتصادي: لا تغيير، لا مخاطرة، لا تحسن.',
-        immediate: {}, medium: {}, long: {} }
+      { label: 'خفض الضرائب لتحفيز الاستثمار الخاص', advisor: 'المستشار الاقتصادي: يضحي بإيراد فوري مقابل نمو أسرع للقطاع الخاص.',
+        immediate: {}, medium: {}, long: {}, macroPolicyEffect: { rateKey: 'corporateTaxRate', delta: -6 } }
     ]
   },
   {

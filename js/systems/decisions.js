@@ -1,4 +1,12 @@
 // نظام اختيار وتطبيق القرارات
+// حدود كل معدل في السياسة الاقتصادية الكلية - تطابق حدود الأشرطة في تبويب "الاقتصاد ← السياسة الاقتصادية"
+const MACRO_RATE_BOUNDS = {
+  corporateTaxRate: { min: 0, max: 50 },
+  consumptionTaxRate: { min: 0, max: 25 },
+  customsTariffRate: { min: 0, max: 40 },
+  fuelSubsidyLevel: { min: 0, max: 100 }
+};
+
 function getAvailableDecisions(state, count) {
   const candidates = [];
   DECISIONS.forEach(d => {
@@ -59,6 +67,16 @@ function applyDecisionOption(state, decision, optionIndex) {
         const budgetKey = PRODUCTIVE_SECTOR_META[eff.sector].budgetKey;
         state.budget.allocations[budgetKey] = Math.max(2, Math.min(35, state.budget.allocations[budgetKey] + eff.investDelta));
       }
+    }
+  }
+
+  // تعديل معدل ضريبي أو دعم وقود دائم في السياسة الاقتصادية الكلية بدل أثر لمرة واحدة يُنسى
+  if (option.macroPolicyEffect) {
+    const eff = option.macroPolicyEffect;
+    const macro = state.macroPolicy;
+    if (macro[eff.rateKey] !== undefined) {
+      const bounds = MACRO_RATE_BOUNDS[eff.rateKey] || { min: 0, max: 100 };
+      macro[eff.rateKey] = Math.max(bounds.min, Math.min(bounds.max, macro[eff.rateKey] + eff.delta));
     }
   }
 

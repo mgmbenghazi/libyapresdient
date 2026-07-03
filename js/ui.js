@@ -125,16 +125,30 @@ function renderAttentionStrip() {
         <span class="ac-delta">(${sign}${fmtNum(a.delta)})</span>
       </div>`;
     }
-    return `<div class="alert-chip ${a.severity}" data-kind="relations" data-rel-kind="${a.relKind}" data-rel-id="${a.relId}">
-      <span class="alert-dot"></span> ${a.name}: ${fmtNum(a.value)}%
+    if (a.kind === 'relations') {
+      return `<div class="alert-chip ${a.severity}" data-kind="relations" data-rel-kind="${a.relKind}" data-rel-id="${a.relId}">
+        <span class="alert-dot"></span> ${a.name}: ${fmtNum(a.value)}%
+      </div>`;
+    }
+    return `<div class="alert-chip ${a.severity}" data-kind="macro">
+      <span class="alert-dot"></span> ${a.name}
     </div>`;
   }).join('');
   wrap.querySelectorAll('.alert-chip').forEach(el => {
     el.addEventListener('click', () => {
       if (el.dataset.kind === 'indicator') openIndicatorDetailModal(el.dataset.key);
-      else openRelationsEntityModal(el.dataset.relKind, el.dataset.relId);
+      else if (el.dataset.kind === 'relations') openRelationsEntityModal(el.dataset.relKind, el.dataset.relId);
+      else goToMacroPolicyTab();
     });
   });
+}
+
+// ينتقل من أي مكان في اللعبة إلى تبويب "الاقتصاد ← السياسة الاقتصادية" مباشرة
+function goToMacroPolicyTab() {
+  const economyTabBtn = document.querySelector('.tab-btn[data-tab="economy"]');
+  if (economyTabBtn) economyTabBtn.click();
+  const macroSubtabBtn = document.querySelector('.subtab-btn[data-subtab="macro"]');
+  if (macroSubtabBtn) macroSubtabBtn.click();
 }
 
 // ------- عناقيد المجالات -------
@@ -582,6 +596,97 @@ function renderSectorLivePreviews() {
   });
 }
 
+// ------- تبويب السياسة الاقتصادية الفرعي: ضرائب، دعم وقود، استراتيجية دين -------
+const MACRO_TAX_META = [
+  { key: 'corporateTaxRate', name: 'ضريبة الشركات', min: 0, max: 50, revenueKey: 'corporateTaxRevenue', sideEffect: 'فوق 20% تُبطئ نمو الصناعة والتنمية الاقتصادية تدريجياً، ودونها تُسرّعه قليلاً.' },
+  { key: 'consumptionTaxRate', name: 'ضريبة الاستهلاك', min: 0, max: 25, revenueKey: 'consumptionTaxRevenue', sideEffect: 'فوق 8% ترفع مستوى الفقر مباشرة - عبء يقع على الأقل دخلاً.' },
+  { key: 'customsTariffRate', name: 'التعرفة الجمركية', min: 0, max: 40, revenueKey: 'customsRevenue', sideEffect: 'فوق 15% تحمي الصناعة المحلية لكنها ترفع التضخم وتخاطر بانتقام تجاري يضر الميزان التجاري.' }
+];
+
+function renderMacroTaxCards() {
+  const s = Game.state;
+  const wrap = document.getElementById('macro-tax-cards');
+  if (!wrap) return;
+  const revenue = estimateMonthlyRevenue(s);
+  wrap.innerHTML = MACRO_TAX_META.map(meta => `
+    <div class="dial-ctrl-card">
+      <div class="dial-head"><span class="dial-name">${meta.name}</span><span class="dial-val" data-tax-val="${meta.key}">${s.macroPolicy[meta.key]}%</span></div>
+      <input type="range" class="sc-slider" data-tax-slider="${meta.key}" min="${meta.min}" max="${meta.max}" value="${s.macroPolicy[meta.key]}">
+      <div class="dial-revenue">إيراد شهري متوقع: <b data-tax-revenue="${meta.key}">${fmtNum(revenue[meta.revenueKey], 0)}</b></div>
+      <div class="dial-side-effect">${meta.sideEffect}</div>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-tax-slider]').forEach(input => {
+    input.addEventListener('input', () => {
+      const key = input.dataset.taxSlider;
+      Game.state.macroPolicy[key] = Number(input.value);
+      wrap.querySelector(`[data-tax-val="${key}"]`).textContent = input.value + '%';
+      const rev = estimateMonthlyRevenue(Game.state);
+      MACRO_TAX_META.forEach(m => {
+        const el = wrap.querySelector(`[data-tax-revenue="${m.key}"]`);
+        if (el) el.textContent = fmtNum(rev[m.revenueKey], 0);
+      });
+      renderBudgetSummary();
+    });
+  });
+}
+
+function renderFuelSubsidyPanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('fuel-subsidy-panel');
+  if (!wrap) return;
+  const revenue = estimateMonthlyRevenue(s);
+  const level = s.macroPolicy.fuelSubsidyLevel;
+  wrap.innerHTML = `
+    <div class="fuel-head"><span>نسبة الدعم (100% = شبه مجاني، 0% = سعر السوق)</span><span class="fuel-val" id="fuel-val">${level}%</span></div>
+    <input type="range" class="sc-slider" id="fuel-slider" min="0" max="100" value="${level}">
+    <div class="sc-preview" style="margin-top:12px">
+      <div class="sc-preview-item"><span class="sc-preview-label">كلفة شهرية</span><span class="sc-preview-value" id="fuel-cost">${fmtNum(revenue.fuelSubsidyCost, 0)}</span></div>
+      <div class="sc-preview-item"><span class="sc-preview-label">تسرّب تهريب تقديري</span><span class="sc-preview-value bad" id="fuel-leak">${fmtNum(estimateSmugglingLeakage(s), 0)}</span></div>
+    </div>
+    <div class="risk-strip" id="fuel-risk-strip" style="display:none">⚠ خفض الدعم أكثر من 15 نقطة دفعة واحدة يُحدث صدمة فورية في الرضا والاستقرار السياسي</div>`;
+  const slider = document.getElementById('fuel-slider');
+  slider.addEventListener('input', () => {
+    const val = Number(slider.value);
+    Game.state.macroPolicy.fuelSubsidyLevel = val;
+    document.getElementById('fuel-val').textContent = val + '%';
+    const rev = estimateMonthlyRevenue(Game.state);
+    document.getElementById('fuel-cost').textContent = fmtNum(rev.fuelSubsidyCost, 0);
+    document.getElementById('fuel-leak').textContent = fmtNum(estimateSmugglingLeakage(Game.state), 0);
+    const drop = Game.state.macroPolicy._prevFuelSubsidy - val;
+    document.getElementById('fuel-risk-strip').style.display = drop > 15 ? '' : 'none';
+    renderBudgetSummary();
+  });
+}
+
+const DEBT_STRATEGY_META = [
+  { id: 'domestic', name: 'اقتراض داخلي', desc: 'تضخم أعلى قليلاً، بلا تبعية خارجية' },
+  { id: 'external', name: 'تمويل خارجي', desc: 'دين أسرع نمواً لكنه يدعم الاحتياطي ويقرّب من صندوق النقد' },
+  { id: 'austerity', name: 'تقشف فوري', desc: 'يؤلم الرضا الشعبي لكن يبقي الدين منضبطاً' }
+];
+
+function renderDebtStrategyPanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('debt-strategy-panel');
+  if (!wrap) return;
+  wrap.innerHTML = DEBT_STRATEGY_META.map(d => `
+    <button type="button" class="seg-btn debt-seg-btn ${s.macroPolicy.debtStrategy === d.id ? 'active' : ''}" data-debt="${d.id}">
+      <span class="debt-seg-name">${d.name}</span><span class="debt-seg-desc">${d.desc}</span>
+    </button>`).join('');
+  wrap.querySelectorAll('.debt-seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Game.state.macroPolicy.debtStrategy = btn.dataset.debt;
+      wrap.querySelectorAll('.debt-seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+function renderMacroTab() {
+  renderMacroTaxCards();
+  renderFuelSubsidyPanel();
+  renderDebtStrategyPanel();
+}
+
 function bindEconomySubTabs() {
   document.querySelectorAll('.subtab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -748,6 +853,7 @@ function renderGameScreen() {
   renderActivityTicker();
   renderBudgetTab();
   renderSectorsTab();
+  renderMacroTab();
   renderActiveMissionsPanel();
   renderCabinetGrid();
   renderCharacterFilters();

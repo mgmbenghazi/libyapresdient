@@ -25,7 +25,21 @@ function getAttentionAlerts(state, limit) {
     });
   });
 
-  const alerts = [...indicatorAlerts, ...relationsAlerts];
+  // تنبيهات السياسة الاقتصادية الكلية: دعم وقود يستنزف الخزينة، أو معدل ضريبي متطرف يُبطئ الصناعة
+  const macroAlerts = [];
+  const revenue = estimateMonthlyRevenue(state);
+  const fuelCostRatio = revenue.fuelSubsidyCost / Math.max(revenue.totalRevenue, 1);
+  if (fuelCostRatio > 0.015) {
+    const score = Math.max(0, 45 - fuelCostRatio * 1500);
+    macroAlerts.push({ kind: 'macro', name: 'دعم الوقود يستنزف الخزينة', score, value: fuelCostRatio * 100, delta: 0, severity: score < 30 ? 'crit' : 'warn' });
+  }
+  const macro = state.macroPolicy;
+  if (macro.corporateTaxRate > 38) {
+    const score = Math.max(0, 45 - (macro.corporateTaxRate - 20));
+    macroAlerts.push({ kind: 'macro', name: 'ضريبة شركات متطرفة تُبطئ الصناعة', score, value: macro.corporateTaxRate, delta: 0, severity: score < 30 ? 'crit' : 'warn' });
+  }
+
+  const alerts = [...indicatorAlerts, ...relationsAlerts, ...macroAlerts];
   alerts.sort((a, b) => a.score - b.score);
   return alerts.slice(0, limit);
 }

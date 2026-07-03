@@ -9,7 +9,8 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 5: + مهلة تبريد للأحداث العشوائية (eventCooldowns) لمنع تكرارها المتتالي
 // 6: + سياسات القطاعات الإنتاجية (sectorPolicies) وأسطر استثمارها في الميزانية (oilSector/agricultureSector/tourismSector/industrySector)
 // 7: + مهلة تبريد إجراء "التواصل" المباشر مع كيانات العلاقات (relationsCooldowns)
-const CURRENT_SAVE_VERSION = 7;
+// 8: + سياسة الاقتصاد الكلي الدائمة (macroPolicy): معدلات الضرائب الثلاثة، دعم المحروقات، استراتيجية الدين
+const CURRENT_SAVE_VERSION = 8;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -40,6 +41,11 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
       agriculture: { ownership: 'privatized', orientation: 30 },
       tourism: { ownership: 'privatized', orientation: 40 },
       industry: { ownership: 'state', orientation: 45 }
+    },
+    macroPolicy: {
+      corporateTaxRate: 20, consumptionTaxRate: 8, customsTariffRate: 15,
+      fuelSubsidyLevel: 75, debtStrategy: 'domestic',
+      _prevFuelSubsidy: 75 // خط أساس صدمة خفض الدعم - يُهيَّأ هنا لا عند أول دورة شهرية، وإلا فات رصد أول تعديل يجريه اللاعب قبل الشهر الأول
     },
     relations: {
       tribes: TRIBES.map(t => ({ ...t })),
@@ -135,6 +141,14 @@ const SAVE_MIGRATIONS = {
     }
     s.version = 7;
     return s;
+  },
+  7: function migrateV7toV8(s) {
+    if (!s.macroPolicy || typeof s.macroPolicy !== 'object') {
+      s.macroPolicy = { corporateTaxRate: 20, consumptionTaxRate: 8, customsTariffRate: 15, fuelSubsidyLevel: 75, debtStrategy: 'domestic', _prevFuelSubsidy: 75 };
+    }
+    if (s.macroPolicy._prevFuelSubsidy === undefined) s.macroPolicy._prevFuelSubsidy = s.macroPolicy.fuelSubsidyLevel;
+    s.version = 8;
+    return s;
   }
 };
 
@@ -157,7 +171,7 @@ function validateStateShape(s) {
   const requiredPaths = [
     ['presidentName'], ['month'], ['year'],
     ['indicators', 'satisfaction'], ['indicators', 'treasury'],
-    ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'],
+    ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'], ['macroPolicy', 'fuelSubsidyLevel'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements']

@@ -404,6 +404,29 @@ canvas.spark { display: block; }
 .sc-preview-value.good { color: var(--good); }
 .sc-preview-value.medium { color: var(--medium); }
 .sc-preview-value.bad { color: var(--bad); }
+
+/* ------- تبويب السياسة الاقتصادية: ضرائب، دعم وقود، استراتيجية دين ------- */
+.macro-tax-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 10px; }
+.dial-ctrl-card { border: 1px solid var(--hairline); border-radius: 14px; background: var(--panel); padding: 16px; transition: border-color .15s ease; }
+.dial-ctrl-card:hover { border-color: var(--gold); }
+.dial-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.dial-name { font-weight: 700; font-size: .92rem; color: var(--text); }
+.dial-val { font-size: 1rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.dial-revenue { font-size: .82rem; color: var(--text-dim); margin-top: 10px; }
+.dial-revenue b { color: var(--text); }
+.dial-side-effect { font-size: .74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
+
+.fuel-subsidy-panel { border: 1px solid var(--gold); border-radius: 14px; background: var(--panel); padding: 18px 20px; }
+.fuel-head { display: flex; justify-content: space-between; font-size: .9rem; font-weight: 600; color: var(--text-dim); margin-bottom: 10px; }
+.fuel-val { color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; }
+.risk-strip { display: flex; align-items: center; gap: 8px; background: rgba(229,72,77,.12); border: 1px solid var(--bad); color: var(--bad); border-radius: 10px; padding: 9px 14px; font-size: .8rem; font-weight: 600; margin-top: 12px; }
+
+.debt-strategy-panel { display: flex; gap: 10px; flex-wrap: wrap; }
+.debt-seg-btn { flex: 1; min-width: 180px; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; }
+.debt-seg-name { font-size: .88rem; font-weight: 700; color: var(--text); }
+.debt-seg-btn.active .debt-seg-name { color: var(--good); }
+.debt-seg-desc { font-size: .74rem; color: var(--text-faint); line-height: 1.4; }
+
 .legend-dot.legend-good { background: var(--good); }
 .legend-dot.legend-bad { background: var(--bad); }
 
