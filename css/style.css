@@ -217,6 +217,12 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 }
 @keyframes sweep { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .command-bar::before { animation: none; } }
+/* مزاج البلاد العام: لون الوهج المحيطي يتحول تدريجياً مع ارتفاع المخاطرة النظامية - حياة بصرية مستمرة لا خلفية ثابتة أبداً */
+.command-bar.mood-tense::before { background: conic-gradient(from 0deg, transparent 0deg, var(--medium-glow) 40deg, transparent 90deg, transparent 360deg); animation-duration: 10s; }
+.command-bar.mood-crisis::before { background: conic-gradient(from 0deg, transparent 0deg, var(--bad-glow) 60deg, transparent 110deg, transparent 360deg); animation-duration: 6s; }
+.command-bar { transition: border-color .6s ease; }
+.command-bar.mood-tense { border-color: rgba(224,167,43,.4); }
+.command-bar.mood-crisis { border-color: rgba(229,72,77,.5); }
 
 .president-block, .gauge-wrap, .status-block { position: relative; z-index: 1; }
 .eyebrow { font-size: .68rem; letter-spacing: .1em; color: var(--text-faint); margin-bottom: 4px; }
@@ -298,6 +304,14 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 .quicknav span { padding: 4px 10px; border: 1px solid var(--hairline-soft); border-radius: 20px; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
 .quicknav span:hover { color: var(--gold); border-color: var(--gold); }
 
+/* ------- الخط الزمني المصيري ------- */
+.legacy-timeline { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; background: var(--panel-2); border-radius: 8px; padding: 8px 14px; }
+.timeline-label { font-size: .75rem; color: var(--text-faint); flex-shrink: 0; }
+.timeline-track { display: flex; gap: 10px; overflow-x: auto; padding: 2px; }
+.timeline-dot { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 1rem; cursor: help; opacity: .85; transition: opacity .15s ease, transform .15s ease; }
+.timeline-dot:hover { opacity: 1; transform: translateY(-2px); }
+.timeline-month { font-size: .62rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
 /* ------- شائعات القصر ------- */
 .rumor-banner { display: flex; flex-direction: column; gap: 4px; background: rgba(201,162,39,.08); border: 1px dashed var(--hairline); border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; }
 .rumor-line { font-size: .78rem; color: var(--gold); font-style: italic; }
@@ -371,7 +385,11 @@ canvas.spark { display: block; }
 .map-region:hover { opacity: .85; }
 .map-region.good { fill: var(--good); }
 .map-region.medium { fill: var(--medium); }
-.map-region.bad { fill: var(--bad); }
+.map-region.bad { fill: var(--bad); animation: regionPulse 2.2s ease-in-out infinite; }
+@keyframes regionPulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(229,72,77,0)); }
+  50% { filter: drop-shadow(0 0 10px rgba(229,72,77,.9)); }
+}
 .map-label { fill: #fff; font-size: 16px; font-weight: 700; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(0,0,0,.5); stroke-width: 3px; }
 
 .region-pulse-list { display: flex; flex-direction: column; gap: 9px; margin-top: 12px; }
@@ -572,6 +590,16 @@ canvas.spark { display: block; }
   0%, 100% { box-shadow: 0 0 0 4px rgba(229,72,77,.15), 0 20px 60px rgba(0,0,0,.6); }
   50% { box-shadow: 0 0 0 8px rgba(229,72,77,.3), 0 20px 60px rgba(0,0,0,.6); }
 }
+.modal-box.pivotal-modal { border: 2px solid var(--gold); box-shadow: 0 0 0 4px rgba(201,162,39,.2), 0 20px 60px rgba(0,0,0,.6); }
+.pivotal-badge { display: inline-block; margin-inline-start: 8px; font-size: .72rem; font-weight: 700; padding: 3px 12px; border-radius: 20px; background: var(--bad-glow); color: var(--bad); }
+
+/* ------- الضغط الزمني على القرارات/الأحداث ------- */
+.decision-timer { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+.decision-timer-track { flex: 1; height: 6px; background: #2c3a2a; border-radius: 3px; overflow: hidden; }
+.decision-timer-fill { height: 100%; width: 100%; background: var(--good); border-radius: 3px; }
+.decision-timer-fill.urgent { background: var(--bad); }
+.decision-timer-num { font-size: .78rem; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 1.4em; text-align: center; }
+#btn-timepressure-toggle.btn-active { color: var(--gold); border-color: var(--gold); }
 .modal-box.celebrate-modal { border: 2px solid var(--gold); animation: celebrateGlow 1.4s ease-out; }
 .modal-box.celebrate-modal h2 { color: var(--gold); }
 @keyframes celebrateGlow {
@@ -597,6 +625,24 @@ canvas.spark { display: block; }
 .effect-chip { font-size: .72rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; }
 .effect-chip.chip-good { background: rgba(63,191,94,.15); color: var(--good); border: 1px solid rgba(63,191,94,.35); }
 .effect-chip.chip-bad { background: rgba(229,72,77,.15); color: var(--bad); border: 1px solid rgba(229,72,77,.35); }
+
+/* ------- فقاعة حوار المستشار: يستبدل السطر المائل الجامد بصوت شخصية فعلية ------- */
+.advisor-dialogue { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; background: var(--panel); border-radius: 8px; padding: 8px 10px; }
+.advisor-avatar { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), #8a6a10); color: #201a05; font-weight: 800; font-size: .8rem; display: flex; align-items: center; justify-content: center; }
+.advisor-bubble b { font-size: .78rem; color: var(--gold); }
+.advisor-bubble p { margin: 2px 0 0; font-size: .8rem; color: var(--text-dim); line-height: 1.5; }
+
+/* ------- معاينة الأثر كأشرطة مرئية - تُقرأ بلمحة بدل نص محض ------- */
+.effect-preview-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.effect-bar-row { display: grid; grid-template-columns: 5.5rem 1fr 2.6rem; align-items: center; gap: 8px; font-size: .72rem; }
+.ebr-label { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ebr-track { height: 6px; background: #2c3a2a; border-radius: 3px; overflow: hidden; }
+.ebr-fill { height: 100%; border-radius: 3px; transition: width .2s ease; }
+.ebr-fill.good { background: var(--good); }
+.ebr-fill.bad { background: var(--bad); }
+.ebr-delta { font-weight: 700; font-variant-numeric: tabular-nums; text-align: left; }
+.ebr-delta.good { color: var(--good); }
+.ebr-delta.bad { color: var(--bad); }
 
 .theme-toggle { display: inline-flex; align-items: center; gap: 6px; }
 

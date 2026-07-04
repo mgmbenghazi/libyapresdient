@@ -43,3 +43,12 @@ function toggleMute() {
   localStorage.setItem('rayyes_libya_muted', Sound.muted ? '1' : '0');
   return Sound.muted;
 }
+
+// ضغط زمني حقيقي على القرارات/الأحداث - مفعَّل افتراضياً لخلق توتر فعلي بدل تأمل بلا نهاية،
+// وقابل للتعطيل لمن يفضّل اللعب المسترخي (الإعداد يُحفظ عبر جلسات المتصفح)
+const TimePressure = { enabled: localStorage.getItem('rayyes_libya_timepressure') !== '0' };
+function toggleTimePressure() {
+  TimePressure.enabled = !TimePressure.enabled;
+  localStorage.setItem('rayyes_libya_timepressure', TimePressure.enabled ? '1' : '0');
+  return TimePressure.enabled;
+}

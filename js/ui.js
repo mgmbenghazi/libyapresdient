@@ -184,12 +184,50 @@ function renderCommandBar() {
   const risk = computeSystemicRisk(s);
   const riskStatus = risk >= 65 ? 'bad' : risk >= 35 ? 'medium' : 'good';
   const riskLabel = risk >= 65 ? 'مرتفعة' : risk >= 35 ? 'متوسطة' : 'منخفضة';
+
+  // مزاج البلاد العام: الوهج المحيطي بمركز القيادة يتحول تدريجياً مع ارتفاع المخاطرة - حياة بصرية مستمرة
+  const commandBarEl = document.getElementById('cmd-gauge')?.closest('.command-bar');
+  if (commandBarEl) {
+    commandBarEl.classList.remove('mood-tense', 'mood-crisis');
+    if (risk >= 65) commandBarEl.classList.add('mood-crisis');
+    else if (risk >= 35) commandBarEl.classList.add('mood-tense');
+  }
+
   const riskBadgeEl = document.getElementById('cmd-risk-badge');
   riskBadgeEl.textContent = `⚠ مخاطرة نظامية ${Math.round(risk)}% — ${riskLabel}`;
   riskBadgeEl.className = `risk-badge ${riskStatus}`;
 
   const capitalBadgeEl = document.getElementById('cmd-capital-badge');
-  capitalBadgeEl.textContent = `🏛 رأس المال السياسي: ${Math.round(s.politicalCapital)}`;
+  const prevCapital = Game.prevCapital !== undefined ? Game.prevCapital : s.politicalCapital;
+  capitalBadgeEl.innerHTML = `🏛 رأس المال السياسي: <span id="cmd-capital-num"></span>`;
+  const capitalNumEl = document.getElementById('cmd-capital-num');
+  if (Math.abs(s.politicalCapital - prevCapital) > 0.5) animateNumber(capitalNumEl, prevCapital, s.politicalCapital, 700);
+  else capitalNumEl.textContent = Math.round(s.politicalCapital);
+  Game.prevCapital = s.politicalCapital;
+}
+
+// ------- الخط الزمني المصيري: قصة حكمك المتراكمة من القرارات اللارجعة والأزمات الكبرى -------
+function renderLegacyTimeline() {
+  const s = Game.state;
+  const wrap = document.getElementById('legacy-timeline');
+  if (!wrap) return;
+  const pivotalDecisions = s.decisionsLog.filter(d => {
+    const def = DECISIONS.find(x => x.id === d.decisionId);
+    return def && def.pivotal;
+  }).map(d => ({ month: d.month, icon: '⚖️', title: d.title, detail: d.optionLabel }));
+  const crisisEvents = s.eventsLog.filter(e => {
+    const def = EVENTS.find(x => x.id === e.eventId);
+    return def && def.severity === 'crisis';
+  }).map(e => ({ month: e.month, icon: '🔥', title: e.title, detail: e.optionLabel }));
+  const milestones = [...pivotalDecisions, ...crisisEvents].sort((a, b) => a.month - b.month);
+
+  if (!milestones.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div class="timeline-label">📖 خط حكمك</div>
+    <div class="timeline-track">
+      ${milestones.map(m => `<div class="timeline-dot" title="الشهر ${m.month}: ${m.title} — ${m.detail}">${m.icon}<span class="timeline-month">${m.month}</span></div>`).join('')}
+    </div>`;
 }
 
 // ------- شائعات القصر: ترقّب لمؤامرة نشطة غير مكتشفة + عدّاد الاستحقاق الانتخابي القادم -------
@@ -1074,6 +1112,7 @@ function renderLogTab() {
 function renderGameScreen() {
   renderHUD();
   renderCommandBar();
+  renderLegacyTimeline();
   renderRumorBanner();
   renderAttentionStrip();
   renderDomainGrid();
@@ -1480,6 +1519,7 @@ function showModal(html, opts) {
   box.innerHTML = closeBtn + html;
   box.classList.toggle('crisis-modal', !!opts.crisis);
   box.classList.toggle('celebrate-modal', !!opts.celebrate);
+  box.classList.toggle('pivotal-modal', !!opts.pivotal);
   const overlay = document.getElementById('modal-overlay');
   overlay.classList.add('active');
   if (dismissible) {
@@ -1526,45 +1566,143 @@ function renderReportModal(summary, onClose) {
   document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 
+// أيقونة/لون لكل فئة قرار أو حدث - تمييز بصري فوري بدل الاعتماد على قراءة النص وحده
+const CATEGORY_META = {
+  economic: { icon: '💰', label: 'اقتصادي' },
+  political: { icon: '🏛️', label: 'سياسي' },
+  security: { icon: '🛡️', label: 'أمني' },
+  social: { icon: '🤝', label: 'اجتماعي' },
+  diplomatic: { icon: '🌍', label: 'دبلوماسي' },
+  international: { icon: '🌐', label: 'دولي' },
+  natural: { icon: '🌪️', label: 'كارثة طبيعية' }
+};
+
+// يفصل نص المستشار ("الاسم (المنصب): الرأي") إلى متحدث ونص لعرضه كفقاعة حوار بدل سطر مائل جامد
+function splitAdvisorText(text) {
+  const idx = text.indexOf(':');
+  if (idx < 0) return { speaker: 'مستشار', line: text };
+  return { speaker: text.slice(0, idx).trim(), line: text.slice(idx + 1).trim() };
+}
+
+function advisorDialogueHtml(state, decision, option) {
+  if (!option.advisor) return '';
+  const resolved = resolveAdvisorText(state, decision, option);
+  const { speaker, line } = splitAdvisorText(resolved);
+  return `
+    <div class="advisor-dialogue">
+      <span class="advisor-avatar">${speaker.trim()[0] || '💬'}</span>
+      <div class="advisor-bubble"><b>${speaker}</b><p>${line}</p></div>
+    </div>`;
+}
+
+// معاينة الأثر كأشرطة مرئية مصغّرة (اتجاه + مقدار تقريبي) بدل رقائق نصية بحتة - تُقرأ بلمحة واحدة
 function effectPreviewHtml(effects) {
   if (!effects) return '';
   const entries = Object.entries(effects).filter(([, v]) => Math.abs(v) > 0.001);
   if (entries.length === 0) return '';
   entries.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-  const chips = entries.slice(0, 4).map(([key, delta]) => {
+  const rows = entries.slice(0, 4).map(([key, delta]) => {
     const meta = INDICATOR_META[key];
     if (!meta) return '';
     const good = meta.good === 'low' ? delta < 0 : delta > 0;
     const sign = delta > 0 ? '+' : '';
-    return `<span class="effect-chip ${good ? 'chip-good' : 'chip-bad'}">${meta.name} ${sign}${fmtNum(delta)}</span>`;
+    const pct = Math.max(6, Math.min(100, Math.abs(delta) * 8));
+    return `
+      <div class="effect-bar-row">
+        <span class="ebr-label">${meta.name}</span>
+        <div class="ebr-track"><div class="ebr-fill ${good ? 'good' : 'bad'}" style="width:${pct}%"></div></div>
+        <span class="ebr-delta ${good ? 'good' : 'bad'}">${sign}${fmtNum(delta)}</span>
+      </div>`;
   }).join('');
-  return `<div class="effect-preview">${chips}</div>`;
+  return `<div class="effect-preview-bars">${rows}</div>`;
+}
+
+function severityTag(item, kindLabel) {
+  const cat = CATEGORY_META[item.category] || { icon: '📋', label: kindLabel };
+  const isCrisis = item.severity === 'crisis';
+  return `<span class="modal-tag ${isCrisis ? 'bad' : ''}">${isCrisis ? '⚠️' : cat.icon} ${cat.label}${isCrisis ? ' · طارئ' : ''}</span>`;
+}
+
+// شريط ضغط زمني حقيقي: يُستنفد بصرياً على مدى الثواني المحددة، وينتهي تلقائياً بالخيار الأخير
+// (عادة "تجاهل/تأجيل" في بنك القرارات) إن لم يحسم اللاعب أمره - توتر فعلي بدل تأمل بلا نهاية
+function decisionTimerHtml(duration) {
+  if (!TimePressure.enabled) return '';
+  return `<div class="decision-timer"><div class="decision-timer-track"><div class="decision-timer-fill" id="decision-timer-fill"></div></div><span class="decision-timer-num" id="decision-timer-num">${duration}</span></div>`;
+}
+
+function startDecisionTimer(duration, onExpire) {
+  if (!TimePressure.enabled) return () => {};
+  const fillEl = document.getElementById('decision-timer-fill');
+  const numEl = document.getElementById('decision-timer-num');
+  if (!fillEl) return () => {};
+  fillEl.style.width = '100%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fillEl.style.transition = `width ${duration}s linear`;
+    fillEl.style.width = '0%';
+  }));
+  let remaining = duration;
+  const interval = setInterval(() => {
+    remaining -= 1;
+    if (numEl) numEl.textContent = Math.max(0, remaining);
+    if (remaining <= 2 && fillEl) fillEl.classList.add('urgent');
+    if (remaining <= 0) {
+      clearInterval(interval);
+      onExpire();
+    }
+  }, 1000);
+  return () => clearInterval(interval);
 }
 
 function renderDecisionModal(decision, onChoose) {
   const isCrisis = decision.severity === 'crisis';
+  const isPivotal = !!decision.pivotal;
+  const timed = !isPivotal;
+  const duration = isCrisis ? 16 : 20;
   const html = `
-    <span class="modal-tag">${isCrisis ? '⚠️ قرار طارئ' : 'قرار ' + decisionTypeLabel(decision.type)}</span>
+    ${severityTag(decision, decisionTypeLabel(decision.type))}
+    ${isPivotal ? '<span class="pivotal-badge">⚖️ قرار مصيري لا رجعة فيه</span>' : ''}
+    ${timed ? decisionTimerHtml(duration) : ''}
     <h2>${decision.title}</h2>
     <p class="modal-desc">${decision.description}</p>
     <div class="decision-options">
       ${decision.options.map((o, i) => `
         <div class="decision-option" data-idx="${i}">
           <div class="opt-label">${o.label}</div>
-          ${o.advisor ? `<div class="opt-advisor">💬 ${resolveAdvisorText(Game.state, decision, o)}</div>` : ''}
+          ${advisorDialogueHtml(Game.state, decision, o)}
           ${effectPreviewHtml(o.immediate)}
         </div>`).join('')}
     </div>`;
-  showModal(html, { crisis: isCrisis, dismissible: false });
+  showModal(html, { crisis: isCrisis, pivotal: isPivotal, dismissible: false });
   if (isCrisis) playCrisisAlert();
+
+  const choose = (idx) => {
+    cancelTimer();
+    const commit = () => { hideModal(); playDecisionResolve(); onChoose(idx); };
+    if (isPivotal) {
+      confirmPivotalChoice(decision.options[idx].label, commit, () => renderDecisionModal(decision, onChoose));
+    } else {
+      commit();
+    }
+  };
+  const cancelTimer = timed ? startDecisionTimer(duration, () => choose(decision.options.length - 1)) : () => {};
   document.querySelectorAll('.decision-option').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = Number(el.dataset.idx);
-      hideModal();
-      playDecisionResolve();
-      onChoose(idx);
-    });
+    el.addEventListener('click', () => choose(Number(el.dataset.idx)));
   });
+}
+
+// تأكيد إضافي قبل تنفيذ قرار لا رجعة فيه - يمنع نقرة عابرة من حسم مسار الدولة بأكمله دون انتباه
+function confirmPivotalChoice(optionLabel, onConfirm, onBack) {
+  const html = `
+    <span class="modal-tag bad">⚖️ تأكيد نهائي</span>
+    <h2>هل أنت متأكد؟</h2>
+    <p class="modal-desc">اخترت: "<b>${optionLabel}</b>". هذا قرار لا رجعة فيه ولا يمكن التراجع عنه لاحقاً خلال هذه الفترة الرئاسية.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="confirm-pivotal-yes">تأكيد القرار</button>
+      <button class="btn btn-ghost" id="confirm-pivotal-no">رجوع لإعادة النظر</button>
+    </div>`;
+  showModal(html, { crisis: true, dismissible: false });
+  document.getElementById('confirm-pivotal-yes').addEventListener('click', onConfirm);
+  document.getElementById('confirm-pivotal-no').addEventListener('click', onBack);
 }
 
 function decisionTypeLabel(t) {
@@ -1573,8 +1711,10 @@ function decisionTypeLabel(t) {
 
 function renderEventModal(event, onChoose) {
   const isCrisis = event.severity === 'crisis';
+  const duration = isCrisis ? 14 : 18; // الأحداث الطارئة تمنح وقتاً أقل من القرارات العادية - إحساس فعلي بالمفاجأة
   const html = `
-    <span class="modal-tag">${isCrisis ? '⚠️ حالة طارئة' : 'حدث عاجل'}</span>
+    ${severityTag(event, 'حدث')}
+    ${decisionTimerHtml(duration)}
     <h2>${event.title}</h2>
     <p class="modal-desc">${event.description}</p>
     <div class="decision-options">
@@ -1586,13 +1726,16 @@ function renderEventModal(event, onChoose) {
     </div>`;
   showModal(html, { crisis: isCrisis, dismissible: false });
   if (isCrisis) playCrisisAlert();
+
+  const choose = (idx) => {
+    cancelTimer();
+    hideModal();
+    playDecisionResolve();
+    onChoose(idx);
+  };
+  const cancelTimer = startDecisionTimer(duration, () => choose(event.options.length - 1));
   document.querySelectorAll('.decision-option').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = Number(el.dataset.idx);
-      hideModal();
-      playDecisionResolve();
-      onChoose(idx);
-    });
+    el.addEventListener('click', () => choose(Number(el.dataset.idx)));
   });
 }
 

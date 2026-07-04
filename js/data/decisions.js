@@ -17,7 +17,7 @@ const DECISIONS = [
   {
     id: 'constitution_government_type', category: 'political', type: 'strategic', title: 'صياغة الدستور: نظام الحكم',
     description: 'قبل أن تمضي في الحكم، يجب حسم شكل النظام السياسي للدولة - قرار تأسيسي لا رجعة فيه يحدد مسار الشرعية طوال فترتك.',
-    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    pivotal: true, minMonth: 1, oneTime: true, forcedByMonth: 1,
     options: [
       { label: 'نظام رئاسي: سلطة تنفيذية مركزة بيدك', advisor: 'المستشار السياسي: قرارات أسرع، لكن الأزمات تُحاسبك أنت شخصياً دون غطاء برلماني.',
         immediate: { politicalStability: 2 }, constitutionEffect: { axis: 'governmentType', value: 'presidential' } },
@@ -28,7 +28,7 @@ const DECISIONS = [
   {
     id: 'constitution_decentralization', category: 'political', type: 'strategic', title: 'صياغة الدستور: هيكل الدولة',
     description: 'هل تُدار البلاد بسلطة مركزية موحدة، أم تُمنح الأقاليم صلاحيات حكم ذاتي واسعة؟ قرار لا رجعة فيه يعيد تشكيل علاقتك بالمناطق طوال حكمك.',
-    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    pivotal: true, minMonth: 1, oneTime: true, forcedByMonth: 1,
     options: [
       { label: 'دولة مركزية موحدة القرار', advisor: 'المستشار السياسي: سيطرة أحكم على الموارد، لكن الأقاليم المهمَلة قد تنفجر غضباً دون متنفس.',
         immediate: { politicalStability: 2 }, constitutionEffect: { axis: 'decentralization', value: 'centralized' } },
@@ -39,7 +39,7 @@ const DECISIONS = [
   {
     id: 'constitution_state_character', category: 'political', type: 'strategic', title: 'صياغة الدستور: طابع الدولة',
     description: 'هل ينص الدستور على دولة علمانية تفصل الدين عن التشريع، أم دولة ذات مرجعية دينية تُشرك رجال الدين في القرار العام؟',
-    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    pivotal: true, minMonth: 1, oneTime: true, forcedByMonth: 1,
     options: [
       { label: 'دولة علمانية: القانون المدني مرجعية التشريع', advisor: 'المستشار السياسي: يرضي التيارات الليبرالية والمجتمع الدولي، ويثير حفيظة التيار المحافظ.',
         immediate: { internationalSupport: 3 }, constitutionEffect: { axis: 'stateCharacter', value: 'secular' } },
@@ -548,7 +548,7 @@ const DECISIONS = [
   {
     id: 'election_call', category: 'political', type: 'strategic', title: 'الدعوة لانتخابات برلمانية منتصف المدة',
     description: 'حان موعد استحقاق دستوري لتجديد الشرعية عبر صناديق الاقتراع في منتصف فترتك الرئاسية - نتيجة هذا الاستحقاق تُحسم فعلياً من شعبيتك الحقيقية مقابل شعبية منافسك، لا شكلاً بروتوكولياً.',
-    minMonth: 20, oneTime: true,
+    pivotal: true, minMonth: 20, oneTime: true,
     forcedByMonth: 22,
     options: [
       { label: 'إجراء الانتخابات في موعدها بنزاهة كاملة', advisor: 'المستشار السياسي: نتيجة حقيقية تعكس شعبيتك الفعلية مقابل منافسك - مكسب مضاعف إن فزت، وضربة موجعة إن خسرت.',

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindBackButtons();
   bindThemeToggle();
   bindSoundToggle();
+  bindTimePressureToggle();
   bindGlobalClickSound();
   bindModalBackdropClose();
 
@@ -51,6 +52,22 @@ function bindSoundToggle() {
   function toggle() { toggleMute(); applyMuteIcon(); }
   document.getElementById('btn-sound-toggle').addEventListener('click', toggle);
   document.getElementById('btn-sound-toggle-start').addEventListener('click', toggle);
+}
+
+function applyTimePressureIcon() {
+  const btn = document.getElementById('btn-timepressure-toggle');
+  if (!btn) return;
+  btn.textContent = TimePressure.enabled ? '⏱️' : '⏱️̶';
+  btn.classList.toggle('btn-active', TimePressure.enabled);
+  btn.title = TimePressure.enabled ? 'الضغط الزمني مفعّل - اضغط للتعطيل' : 'الضغط الزمني معطّل - اضغط للتفعيل';
+}
+
+function bindTimePressureToggle() {
+  applyTimePressureIcon();
+  document.getElementById('btn-timepressure-toggle').addEventListener('click', () => {
+    toggleTimePressure();
+    applyTimePressureIcon();
+  });
 }
 
 function bindGlobalClickSound() {

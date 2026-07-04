@@ -89,6 +89,7 @@
       <button class="tab-btn" data-tab="log">السجل</button>
     </nav>
     <div class="topbar-right">
+      <button id="btn-timepressure-toggle" class="btn btn-small btn-ghost" title="تفعيل/تعطيل الضغط الزمني على القرارات">⏱️</button>
       <button id="btn-sound-toggle" class="btn btn-small btn-ghost">🔊</button>
       <button id="btn-theme-toggle" class="btn btn-small btn-ghost">🌙</button>
       <button id="btn-save" class="btn btn-small">حفظ</button>
@@ -136,6 +137,9 @@
           </div>
         </div>
       </div>
+
+      <!-- خط زمني مصيري: أبرز القرارات اللارجعة والأزمات الكبرى المتراكمة عبر فترتك -->
+      <div id="legacy-timeline" class="legacy-timeline" style="display:none"></div>
 
       <!-- شائعات القصر: ترقّب لما يُحاك دون كشفه بالكامل -->
       <div id="rumor-banner" class="rumor-banner" style="display:none"></div>
