@@ -1,6 +1,52 @@
+// المسار الدستوري: ثلاثة محاور لا رجعة فيها تُحسم مرة واحدة أول اللعبة، وتُقفل/تفتح قرارات وأحداث حصرية لاحقاً
+const CONSTITUTION_AXES = [
+  { key: 'governmentType', label: 'نظام الحكم', options: [
+    { value: 'presidential', label: 'رئاسي' }, { value: 'parliamentary', label: 'برلماني' }
+  ] },
+  { key: 'decentralization', label: 'هيكل الدولة', options: [
+    { value: 'centralized', label: 'مركزي' }, { value: 'federal', label: 'فدرالي' }
+  ] },
+  { key: 'stateCharacter', label: 'طابع الدولة', options: [
+    { value: 'secular', label: 'علماني' }, { value: 'religious', label: 'ديني' }
+  ] }
+];
+
 // بنك القرارات - كل قرار: عنوان، وصف، فئة، نوع، خيارات بتأثيرات فورية/متوسطة/طويلة المدى
 // أنواع القرارات: strategic (استراتيجي), tactical (تكتيكي), emergency (طارئ), diplomatic (دبلوماسي)
 const DECISIONS = [
+  {
+    id: 'constitution_government_type', category: 'political', type: 'strategic', title: 'صياغة الدستور: نظام الحكم',
+    description: 'قبل أن تمضي في الحكم، يجب حسم شكل النظام السياسي للدولة - قرار تأسيسي لا رجعة فيه يحدد مسار الشرعية طوال فترتك.',
+    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    options: [
+      { label: 'نظام رئاسي: سلطة تنفيذية مركزة بيدك', advisor: 'المستشار السياسي: قرارات أسرع، لكن الأزمات تُحاسبك أنت شخصياً دون غطاء برلماني.',
+        immediate: { politicalStability: 2 }, constitutionEffect: { axis: 'governmentType', value: 'presidential' } },
+      { label: 'نظام برلماني: حكومة ائتلافية مسؤولة أمام البرلمان', advisor: 'المستشار السياسي: يوزّع المسؤولية، لكن ائتلافك قد ينهار في أي أزمة.',
+        immediate: { internationalSupport: 3 }, constitutionEffect: { axis: 'governmentType', value: 'parliamentary' } }
+    ]
+  },
+  {
+    id: 'constitution_decentralization', category: 'political', type: 'strategic', title: 'صياغة الدستور: هيكل الدولة',
+    description: 'هل تُدار البلاد بسلطة مركزية موحدة، أم تُمنح الأقاليم صلاحيات حكم ذاتي واسعة؟ قرار لا رجعة فيه يعيد تشكيل علاقتك بالمناطق طوال حكمك.',
+    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    options: [
+      { label: 'دولة مركزية موحدة القرار', advisor: 'المستشار السياسي: سيطرة أحكم على الموارد، لكن الأقاليم المهمَلة قد تنفجر غضباً دون متنفس.',
+        immediate: { politicalStability: 2 }, constitutionEffect: { axis: 'decentralization', value: 'centralized' } },
+      { label: 'دولة فدرالية بحكم ذاتي إقليمي واسع', advisor: 'المستشار السياسي: يمتص غضب الأطراف، لكنه يُضعف قبضتك المركزية على القرار.',
+        immediate: { satisfaction: 2 }, constitutionEffect: { axis: 'decentralization', value: 'federal' } }
+    ]
+  },
+  {
+    id: 'constitution_state_character', category: 'political', type: 'strategic', title: 'صياغة الدستور: طابع الدولة',
+    description: 'هل ينص الدستور على دولة علمانية تفصل الدين عن التشريع، أم دولة ذات مرجعية دينية تُشرك رجال الدين في القرار العام؟',
+    minMonth: 1, oneTime: true, forcedByMonth: 1,
+    options: [
+      { label: 'دولة علمانية: القانون المدني مرجعية التشريع', advisor: 'المستشار السياسي: يرضي التيارات الليبرالية والمجتمع الدولي، ويثير حفيظة التيار المحافظ.',
+        immediate: { internationalSupport: 3 }, constitutionEffect: { axis: 'stateCharacter', value: 'secular' } },
+      { label: 'دولة ذات مرجعية دينية راسخة', advisor: 'المستشار السياسي: يمنحك شرعية شعبية واسعة في أوساط محافظة، بثمن حذر دولي.',
+        immediate: { satisfaction: 3 }, constitutionEffect: { axis: 'stateCharacter', value: 'religious' } }
+    ]
+  },
   {
     id: 'subsidy_reform', category: 'economic', type: 'strategic', title: 'إصلاح نظام الدعم',
     description: 'يستهلك دعم السلع الأساسية والوقود جزءاً كبيراً من الميزانية العامة. مستشاروك يرون أن الإصلاح بات ضرورياً، لكن الطريقة تحدد ردة فعل الشارع.',
@@ -501,16 +547,16 @@ const DECISIONS = [
   },
   {
     id: 'election_call', category: 'political', type: 'strategic', title: 'الدعوة لانتخابات برلمانية منتصف المدة',
-    description: 'حان موعد استحقاق دستوري لتجديد الشرعية عبر صناديق الاقتراع في منتصف فترتك الرئاسية.',
+    description: 'حان موعد استحقاق دستوري لتجديد الشرعية عبر صناديق الاقتراع في منتصف فترتك الرئاسية - نتيجة هذا الاستحقاق تُحسم فعلياً من شعبيتك الحقيقية مقابل شعبية منافسك، لا شكلاً بروتوكولياً.',
     minMonth: 20, oneTime: true,
     forcedByMonth: 22,
     options: [
-      { label: 'إجراء الانتخابات في موعدها بشفافية كاملة', advisor: 'المستشار السياسي: يعزز الشرعية الداخلية والدولية بشكل كبير.',
-        immediate: { politicalStability: -3 }, medium: { politicalStability: 10, internationalSupport: 5 }, long: {} },
-      { label: 'تأجيل الانتخابات بذريعة الظروف الأمنية', advisor: 'المستشار الأمني: يتجنب مخاطرة قصيرة المدى بثمن شرعية طويلة المدى.',
-        immediate: { internationalSupport: -6, politicalStability: -2 }, medium: { politicalStability: -3 }, long: {} },
-      { label: 'إجراء انتخابات جزئية في مناطق مستقرة فقط', advisor: 'المستشار السياسي: حل وسط غير مقنع لكل الأطراف.',
-        immediate: { politicalStability: 2, internationalSupport: -1 }, medium: {}, long: {} }
+      { label: 'إجراء الانتخابات في موعدها بنزاهة كاملة', advisor: 'المستشار السياسي: نتيجة حقيقية تعكس شعبيتك الفعلية مقابل منافسك - مكسب مضاعف إن فزت، وضربة موجعة إن خسرت.',
+        electionResolution: { rig: false } },
+      { label: 'التلاعب بنتيجة الانتخابات لضمان الفوز', advisor: 'المستشار الأمني: يضمن فوزاً معلناً، لكن انكشاف التزوير - خصوصاً إن ضعف قبضتك الأمنية - يكلفك شرعيتك الدولية والداخلية معاً.',
+        electionResolution: { rig: true } },
+      { label: 'تأجيل الانتخابات بذريعة الظروف الأمنية', advisor: 'المستشار الأمني: يتجنب خوض استحقاق فعلي، لكنه يمنح منافسك زخماً شعبياً كمن حُرم من فرصته العادلة.',
+        immediate: { internationalSupport: -6, politicalStability: -2 }, medium: { politicalStability: -3 }, rivalApprovalDelta: 12 }
     ]
   },
 

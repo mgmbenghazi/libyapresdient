@@ -333,5 +333,161 @@ const EVENTS = [
       { label: 'مناشدة الشعب والنزول إلى الشارع لحشد الدعم', advisor: 'المستشار السياسي: مقامرة كبرى - إما تحصينك تماماً أو تسريع سقوطك.',
         immediate: { satisfaction: 5, politicalStability: -1, security: -3 } }
     ]
+  },
+
+  // ------- أحداث حصرية يفتحها المسار الدستوري (constitution) - كل نظام حكم يواجه أزمته الخاصة -------
+  {
+    id: 'coalition_collapse', severity: 'crisis', category: 'political', title: 'انهيار الائتلاف الحكومي البرلماني',
+    description: 'انسحبت كتلة رئيسية من ائتلافك البرلماني احتجاجاً على سياساتك الأخيرة، مهددة بسحب الثقة من حكومتك بالكامل - أزمة لا يواجهها نظام رئاسي مباشر.',
+    condition: s => s.constitution.governmentType === 'parliamentary' && s.indicators.politicalStability < 45,
+    weight: 4, minMonth: 6, cooldown: 10,
+    options: [
+      { label: 'تنازلات وزارية لاسترضاء الكتلة المنسحبة', immediate: { politicalStability: 3, budgetBalance: -2 } },
+      { label: 'تشكيل ائتلاف بديل بكتل أصغر', immediate: { politicalStability: -2, satisfaction: 1 } },
+      { label: 'الدعوة لانتخابات مبكرة لحسم الأزمة', immediate: { politicalStability: -5, internationalSupport: 4 } }
+    ]
+  },
+  {
+    id: 'impeachment_attempt', severity: 'crisis', category: 'political', title: 'محاولة عزل رئاسية في البرلمان',
+    description: 'قدّمت كتلة معارضة طلباً لعزلك دستورياً مستغلّة تصاعد الأزمات في عهدك - النظام الرئاسي يمنحك سلطة أوسع، لكنه يجعلك أيضاً الهدف المباشر الوحيد للمحاسبة.',
+    condition: s => s.constitution.governmentType === 'presidential' && computeSystemicRisk(s) > 60,
+    weight: 3, minMonth: 10, cooldown: 14,
+    options: [
+      { label: 'حملة ضغط مكثفة على النواب المترددين', advisor: 'المستشار السياسي: يستهلك رأس مالك السياسي لكنه الأضمن.',
+        immediate: { politicalStability: 3, satisfaction: -1 } },
+      { label: 'مخاطبة الشعب مباشرة لتصعيد الضغط على البرلمان', immediate: { satisfaction: 4, politicalStability: -2 } },
+      { label: 'تجاهل المحاولة باعتبارها مناورة سياسية', immediate: { politicalStability: -4 } }
+    ]
+  },
+
+  // ------- أحداث حصرية يفتحها محور اللامركزية -------
+  {
+    id: 'separatist_unrest_centralized', severity: 'crisis', category: 'security', title: 'دعوات انفصالية في إقليم مهمَل',
+    description: 'مع غياب أي صيغة حكم ذاتي في دولتك المركزية، تصاعدت الدعوات إلى الانفصال أو الحكم الذاتي الكامل في أحد الأقاليم المهمَلة تنموياً.',
+    dynamicTarget: 'weakestRegionSecurity',
+    condition: s => s.constitution.decentralization === 'centralized',
+    weight: 3, minMonth: 8, cooldown: 12,
+    options: [
+      { label: 'عرض حزمة تنموية طارئة للإقليم', immediate: { budgetBalance: -3, satisfaction: 2 }, relationsEffect: { type: 'tribe', delta: 10 } },
+      { label: 'حملة أمنية لقمع الدعوات الانفصالية', immediate: { security: 2, satisfaction: -4, internationalSupport: -3 } },
+      { label: 'تجاهل الدعوات باعتبارها هامشية', immediate: { politicalStability: -3 } }
+    ]
+  },
+  {
+    id: 'regional_autonomy_overreach', category: 'political', title: 'إقليم فدرالي يتجاوز صلاحياته الدستورية',
+    description: 'اتخذت حكومة أحد الأقاليم في دولتك الفدرالية قرارات تتجاوز صلاحياتها الدستورية بوضوح، في اختبار مبكر لتوازن السلطة بين المركز والأطراف.',
+    dynamicTarget: 'weakestRegionSecurity',
+    condition: s => s.constitution.decentralization === 'federal',
+    weight: 3, minMonth: 8, cooldown: 12,
+    options: [
+      { label: 'إحالة الخلاف إلى محكمة دستورية مستقلة', immediate: { politicalStability: 2, internationalSupport: 2 } },
+      { label: 'التفاوض المباشر مع حكومة الإقليم', immediate: { satisfaction: 1 }, relationsEffect: { type: 'tribe', delta: 8 } },
+      { label: 'فرض القرار المركزي بالقوة القانونية', immediate: { politicalStability: -3, satisfaction: -2 }, relationsEffect: { type: 'tribe', delta: -10 } }
+    ]
+  },
+
+  // ------- أحداث حصرية يفتحها محور طابع الدولة -------
+  {
+    id: 'religious_establishment_pressure', category: 'political', title: 'ضغط من المؤسسة الدينية لتوسيع نفوذها التشريعي',
+    description: 'يطالب رجال دين بارزون بدور أوسع في مراجعة التشريعات الحكومية بما يتفق مع المرجعية الدينية للدولة - رفض الطلب يثير التيار المحافظ، وقبوله يقيّد مساحة القرار العلماني.',
+    condition: s => s.constitution.stateCharacter === 'religious',
+    weight: 3, minMonth: 6, cooldown: 12,
+    options: [
+      { label: 'منح المؤسسة الدينية دوراً استشارياً رسمياً', immediate: { satisfaction: 3, internationalSupport: -3 } },
+      { label: 'الإبقاء على التشريع بيد الحكومة فقط', immediate: { satisfaction: -2, internationalSupport: 2 } },
+      { label: 'حل وسط: مجلس استشاري بلا صلاحية إلزامية', immediate: { politicalStability: 1 } }
+    ]
+  },
+  {
+    id: 'secular_reform_backlash', severity: 'crisis', category: 'social', title: 'احتجاجات محافظة على إصلاح اجتماعي علماني',
+    description: 'أثار إصلاح اجتماعي حكومي حديث غضب أوساط محافظة واسعة رأت فيه مساساً بثوابت المجتمع، في اختبار لصلابة الطابع العلماني لدولتك.',
+    condition: s => s.constitution.stateCharacter === 'secular',
+    weight: 3, minMonth: 6, cooldown: 12,
+    options: [
+      { label: 'التمسك بالإصلاح وشرحه إعلامياً', immediate: { satisfaction: -2, internationalSupport: 4 } },
+      { label: 'تعديل الإصلاح لتخفيف حدته', immediate: { politicalStability: 2, internationalSupport: -2 } },
+      { label: 'التراجع الكامل عن الإصلاح', immediate: { satisfaction: 3, internationalSupport: -5 } }
+    ]
+  },
+
+  // ------- أحداث نظام المؤامرات (schemes.js): شبكة العلاقات كخصم نشط يخطط ضدك فعلياً -------
+  {
+    id: 'scheme_coup_discovered', severity: 'crisis', category: 'security', title: 'الاستخبارات تكشف محاولة انقلاب يدبّرها {target}',
+    description: 'كشف جهاز الاستخبارات أن {target} كان يخطط فعلياً لتحرّك عسكري ضدك - القرار الآن بيدك قبل أن يفوت الأوان.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'coup' && s.schemes[0].discovered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'الاعتقال الفوري ومحاكمة عسكرية', advisor: 'رئيس الوزراء: يقضي على الخطر تماماً لكنه يخلق شهيداً محتملاً في أوساط مؤيديه.',
+        immediate: { security: 2, politicalStability: 3 }, dismissTargetCharacter: true, resolvesScheme: true },
+      { label: 'شراء ولائه بامتيازات استثنائية', advisor: 'المستشار السياسي: يحتوي الخطر هادئاً لكنه يُغري آخرين بمحاكاة نفس الأسلوب مستقبلاً.',
+        immediate: { budgetBalance: -3 }, resolvesScheme: true },
+      { label: 'فضح المؤامرة إعلامياً دون اعتقال', advisor: 'المستشار السياسي: يحرجه علناً ويُضعف تحالفاته دون مخاطرة الاعتقال.',
+        immediate: { satisfaction: 2, politicalStability: -1 }, resolvesScheme: true }
+    ]
+  },
+  {
+    id: 'scheme_coup_executed', severity: 'crisis', category: 'security', title: 'محاولة انقلاب فعلية يقودها {target}',
+    description: 'فات أوان الاحتواء: تحرّكت وحدات موالية لـ{target} فعلياً في محاولة عسكرية للاستيلاء على مقار سيادية.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'coup' && s.schemes[0].triggered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'حشد القوات الموالية وقمع المحاولة فوراً', advisor: 'رئيس الوزراء: نجاح شبه مؤكد لكنه يعمّق الانقسام داخل المؤسسة العسكرية.',
+        immediate: { security: -3, politicalStability: 3, satisfaction: -2 }, dismissTargetCharacter: true, resolvesScheme: true },
+      { label: 'التفاوض معه لاحتواء الموقف سلمياً', advisor: 'المستشار السياسي: يجنّب إراقة الدماء لكنه يُظهرك ضعيفاً أمام بقية الخصوم.',
+        immediate: { politicalStability: -4, satisfaction: 1 }, resolvesScheme: true },
+      { label: 'مناشدة الشعب والنزول إلى الشارع لحشد الدعم', advisor: 'المستشار السياسي: مقامرة كبرى - إما تحصينك تماماً أو تسريع سقوطك.',
+        immediate: { satisfaction: 5, politicalStability: -2, security: -4 }, resolvesScheme: true }
+    ]
+  },
+  {
+    id: 'scheme_defection_discovered', severity: 'crisis', category: 'political', title: 'الاستخبارات تكشف نية {target} الانشقاق إلى المعارضة',
+    description: 'كشفت الاستخبارات أن {target} كان يخطط للانشقاق علناً والانضمام إلى صفوف معارضتك السياسية - لا يزال بإمكانك التحرك قبل الإعلان.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'defect' && s.schemes[0].discovered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'إقالته فوراً قبل أن يعلن انشقاقه', advisor: 'المستشار السياسي: يمنعه من الاستفادة إعلامياً من موقعه الرسمي.',
+        immediate: { politicalStability: 1 }, dismissTargetCharacter: true, resolvesScheme: true },
+      { label: 'مواجهته مباشرة ومحاولة استيعابه', immediate: { politicalStability: 2 }, resolvesScheme: true },
+      { label: 'تجاهل الأمر وترك الموقف يتطور', immediate: { politicalStability: -2 }, resolvesScheme: true }
+    ]
+  },
+  {
+    id: 'scheme_defection_executed', severity: 'crisis', category: 'political', title: '{target} ينشق علناً وينضم إلى المعارضة',
+    description: 'أعلن {target} انشقاقه عن حكومتك بشكل علني، متوجهاً مباشرة إلى معسكر معارضتك السياسية في ضربة موجعة لصورة تماسك فريقك.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'defect' && s.schemes[0].triggered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'إقالته رسمياً والرد إعلامياً بحزم', advisor: 'المستشار السياسي: يحفظ ماء الوجه لكن الضرر السياسي وقع فعلاً.',
+        immediate: { politicalStability: -3 }, dismissTargetCharacter: true, rivalApprovalDelta: 8, resolvesScheme: true },
+      { label: 'تجاهل الانشقاق دون تعليق رسمي', immediate: { politicalStability: -5, satisfaction: -1 }, rivalApprovalDelta: 10, resolvesScheme: true }
+    ]
+  },
+  {
+    id: 'scheme_smear_discovered', severity: 'crisis', category: 'political', title: 'الاستخبارات تكشف حملة تسريبات يدبّرها {target}',
+    description: 'كشفت الاستخبارات أن {target} كان يجهّز تسريبات إعلامية مسيئة لك شخصياً - لا يزال بإمكانك احتواء الأمر قبل نشرها.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'smear' && s.schemes[0].discovered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'إقالته وتقديمه للمساءلة القانونية', immediate: { politicalStability: 1 }, dismissTargetCharacter: true, resolvesScheme: true },
+      { label: 'مواجهته سرياً وإجباره على التراجع', immediate: {}, resolvesScheme: true },
+      { label: 'تجاهل الأمر تماماً', immediate: { politicalStability: -1 }, resolvesScheme: true }
+    ]
+  },
+  {
+    id: 'scheme_smear_executed', severity: 'crisis', category: 'political', title: 'تسريبات مسيئة من {target} تهزّ صورتك العامة',
+    description: 'نشر {target} تسريبات مسيئة لك شخصياً عبر وسائل الإعلام، في ضربة موجعة لصورتك أمام الرأي العام.',
+    condition: s => (s.schemes[0] && s.schemes[0].kind === 'smear' && s.schemes[0].triggered) || false,
+        dynamicTarget: 'activeSchemeInitiator',
+    weight: 1, cooldown: 1,
+    options: [
+      { label: 'إقالته فوراً والرد بحملة توضيحية', advisor: 'المستشار السياسي: يحد من الضرر لكنه لا يمحوه كاملاً.',
+        immediate: { satisfaction: -2, politicalStability: -1 }, dismissTargetCharacter: true, resolvesScheme: true },
+      { label: 'تجاهل التسريبات دون رد رسمي', immediate: { satisfaction: -5 }, rivalApprovalDelta: 5, resolvesScheme: true }
+    ]
   }
 ];

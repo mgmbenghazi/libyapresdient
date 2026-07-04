@@ -236,6 +236,9 @@ function processQueue() {
     processScheduledEffects(s);
     lastTickSummary = monthlyEconomicTick(s);
     monthlyRelationsTick(s);
+    updatePoliticalCapital(s);
+    updateRivalApproval(s);
+    advanceSchemes(s);
     const cabinetResults = applyCabinetMonthlyEffects(s);
     s.history.push(snapshotIndicators(s, lastTickSummary));
     if (s.history.length > 60) s.history.shift();
@@ -269,8 +272,12 @@ function processQueue() {
 
   if (step.type === 'decision') {
     renderDecisionModal(step.payload, (idx) => {
-      applyDecisionOption(s, step.payload, idx);
-      processQueue();
+      const outcome = applyDecisionOption(s, step.payload, idx);
+      if (outcome && outcome.electionResult) {
+        renderElectionResultModal(outcome.electionResult, () => processQueue());
+      } else {
+        processQueue();
+      }
     });
     return;
   }

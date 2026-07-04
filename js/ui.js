@@ -108,6 +108,9 @@ function renderCommandBar() {
   const riskBadgeEl = document.getElementById('cmd-risk-badge');
   riskBadgeEl.textContent = `⚠ مخاطرة نظامية ${Math.round(risk)}% — ${riskLabel}`;
   riskBadgeEl.className = `risk-badge ${riskStatus}`;
+
+  const capitalBadgeEl = document.getElementById('cmd-capital-badge');
+  capitalBadgeEl.textContent = `🏛 رأس المال السياسي: ${Math.round(s.politicalCapital)}`;
 }
 
 // ------- شريط "يتطلب انتباهك الآن" -------
@@ -877,13 +880,77 @@ function openTargetedMissionCharModal(kind, id) {
   });
 }
 
+// ------- تبويب الإجراءات الرئاسية -------
+function renderActionsTab() {
+  const s = Game.state;
+  const wrap = document.getElementById('actions-grid');
+  if (!wrap) return;
+  wrap.innerHTML = getAvailableActions(s).map(a => {
+    const onCooldown = s.actionCooldowns[a.id] && s.month < s.actionCooldowns[a.id];
+    const canAfford = s.politicalCapital >= a.cost;
+    const disabled = onCooldown || !canAfford;
+    const statusText = onCooldown ? `متاح في الشهر ${s.actionCooldowns[a.id]}` : (!canAfford ? 'رأس مال سياسي غير كافٍ' : '');
+    return `
+      <div class="action-card ${disabled ? 'disabled' : ''}">
+        <div class="ac-head"><span class="ac-icon">${a.icon}</span><span class="ac-name">${a.name}</span><span class="ac-cost">${a.cost} 🏛</span></div>
+        <p class="ac-desc">${a.description}</p>
+        <button class="btn btn-small ${disabled ? '' : 'btn-primary'}" data-action-id="${a.id}" ${disabled ? 'disabled' : ''}>تنفيذ</button>
+        ${statusText ? `<div class="ac-status">${statusText}</div>` : ''}
+      </div>`;
+  }).join('') || '<p class="hint">لا توجد إجراءات متاحة حالياً.</p>';
+
+  wrap.querySelectorAll('[data-action-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const result = applyAction(s, btn.dataset.actionId);
+      renderGameScreen();
+      if (result.message || result.reason) {
+        showModal(`<span class="modal-tag">إجراء رئاسي</span><h2>${result.ok ? 'نُفِّذ الإجراء' : 'تعذّر التنفيذ'}</h2><p class="modal-desc">${result.message || result.reason}</p><div class="nav-row"><button class="btn btn-primary" id="modal-continue">حسناً</button></div>`);
+        document.getElementById('modal-continue').addEventListener('click', hideModal);
+      }
+    });
+  });
+}
+
+// ------- المسار الدستوري -------
+function renderConstitutionPanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('constitution-panel');
+  if (!wrap) return;
+  const rows = CONSTITUTION_AXES.map(axis => {
+    const chosen = s.constitution[axis.key];
+    const option = chosen ? axis.options.find(o => o.value === chosen) : null;
+    return `<div class="const-row"><span class="const-axis">${axis.label}</span><span class="const-value ${chosen ? 'chosen' : 'pending'}">${option ? option.label : 'لم يُحسم بعد'}</span></div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="constitution-summary">${rows}</div>`;
+}
+
+// ------- السباق الانتخابي -------
+function renderRivalPanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('rival-panel');
+  if (!wrap) return;
+  if (!s.rival) { wrap.innerHTML = '<p class="hint">لا يوجد منافس سياسي بارز حالياً.</p>'; return; }
+  const approval = s.rival.approval;
+  const yourApproval = s.indicators.satisfaction;
+  const status = approval > yourApproval ? 'bad' : approval > yourApproval - 15 ? 'medium' : 'good';
+  wrap.innerHTML = `
+    <div class="rival-card">
+      <div class="rival-head"><span class="rival-name">${s.rival.name}</span><span class="rival-tag">المعارضة</span></div>
+      <div class="rival-bars">
+        <div class="rival-bar-row"><span>شعبيتك</span><div class="stat-bar"><div class="stat-bar-fill" style="width:${yourApproval}%"></div></div><b>${Math.round(yourApproval)}%</b></div>
+        <div class="rival-bar-row"><span>شعبية المنافس</span><div class="stat-bar"><div class="stat-bar-fill ${status}" style="width:${approval}%"></div></div><b>${Math.round(approval)}%</b></div>
+      </div>
+    </div>`;
+}
+
 function renderLogTab() {
   const s = Game.state;
   const wrap = document.getElementById('log-list');
   wrap.innerHTML = '';
   const combined = [
     ...s.decisionsLog.map(d => ({ ...d, kind: 'قرار' })),
-    ...s.eventsLog.map(e => ({ ...e, kind: 'حدث' }))
+    ...s.eventsLog.map(e => ({ ...e, kind: 'حدث' })),
+    ...(s.actionsLog || []).map(a => ({ ...a, kind: 'إجراء رئاسي', optionLabel: a.message }))
   ].sort((a, b) => b.month - a.month);
   if (combined.length === 0) {
     wrap.innerHTML = '<p class="hint">لا يوجد سجل بعد.</p>';
@@ -914,6 +981,9 @@ function renderGameScreen() {
   renderCharacterFilters();
   renderCharacterGrid();
   renderRelationsTab();
+  renderActionsTab();
+  renderConstitutionPanel();
+  renderRivalPanel();
   renderLogTab();
 }
 
@@ -977,6 +1047,37 @@ function renderTurnoverModal(result, onClose) {
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">حسناً</button></div>`;
   const dismiss = () => { hideModal(); onClose(); };
   showModal(html, { onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
+}
+
+function renderElectionResultModal(result, onClose) {
+  if (!result.contested) {
+    const html = `
+      <span class="modal-tag">نتيجة الاستحقاق الانتخابي</span>
+      <h2>${result.message}</h2>
+      <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
+    const dismiss = () => { hideModal(); onClose(); };
+    showModal(html, { onDismiss: dismiss });
+    document.getElementById('modal-continue').addEventListener('click', dismiss);
+    return;
+  }
+  const tag = result.won ? (result.caught ? 'فوز مزوَّر... وانكشف!' : 'فوز في الانتخابات') : 'خسارة في الانتخابات';
+  const tagClass = result.won && !result.caught ? 'good' : 'bad';
+  let body;
+  if (result.rigged && result.caught) {
+    body = `زوّرت النتيجة المعلنة، لكن التزوير انكشف بشكل صادم أمام الرأي العام والمجتمع الدولي - ضربة قاسية لشرعيتك رغم "الفوز" الشكلي.`;
+  } else if (result.won) {
+    body = `تفوّقت شعبيتك الفعلية (${result.yourScore}%) على شعبية ${result.rivalName} (${result.rivalScore}%) - فوز حقيقي يعزز شرعيتك.`;
+  } else {
+    body = `تفوّقت شعبية ${result.rivalName} (${result.rivalScore}%) على شعبيتك الفعلية (${result.yourScore}%) - خسارة انتخابية تهزّ موقعك السياسي.`;
+  }
+  const html = `
+    <span class="modal-tag ${tagClass}">${tag}</span>
+    <h2>${result.contested && !result.won ? 'خسرت الاستحقاق الانتخابي' : (result.caught ? 'فضيحة تزوير' : 'فزت بالاستحقاق الانتخابي')}</h2>
+    <p class="modal-desc">${body}</p>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
+  const dismiss = () => { hideModal(); onClose(); };
+  showModal(html, { crisis: !result.won || result.caught, onDismiss: dismiss });
   document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 

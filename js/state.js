@@ -14,7 +14,9 @@ const SAVE_KEY = 'rayyes_libya_save';
 //    + الدورة الاقتصادية العالمية (economy.worldCycle, economy.worldCycleMonthsLeft) فوق مشي سعر النفط العشوائي
 // 10: بنود الميزانية (budget.allocations) أصبحت مبالغ مطلقة بالمليون د.ل بدل نسب من الإيراد المتقلب،
 //     مع خط أساس ثابت budget.baseline وإيراد مرجعي budget.referenceRevenue يُحسبان عند إنشاء اللعبة
-const CURRENT_SAVE_VERSION = 10;
+// 11: + رأس المال السياسي (politicalCapital) ولوحة الإجراءات الرئاسية الاستباقية (actionCooldowns, actionsLog)
+//     + المسار الدستوري اللارجعة (constitution) + المؤامرات (schemes) + منافس انتخابي حي (rival)
+const CURRENT_SAVE_VERSION = 11;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -72,6 +74,12 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     relationsCooldowns: {}, // "kind:id" -> month usable again لإجراء "تواصل" المباشر
     pendingFollowUps: [], // {id, kind:'decision'|'event', dueMonth} - سلاسل أزمات مجدولة من قرارات/أحداث سابقة
     engineStreaks: { austerity: 0, securityNeglect: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
+    politicalCapital: 50, // مورد يُنفَق على الإجراءات الرئاسية الاستباقية (ACTIONS في data/actions.js)
+    actionCooldowns: {}, // actionId -> month usable again
+    actionsLog: [],
+    constitution: { governmentType: null, decentralization: null, stateCharacter: null }, // يُحدَّد بقرارات تأسيسية لا رجعة فيها أول اللعبة
+    schemes: [], // {id, initiatorId, kind:'coup'|'defect'|'smear', progress, discovered, startedMonth} - مؤامرة واحدة نشطة كحد أقصى
+    rival: null, // {characterId, name, approval} - يُهيَّأ لاحقاً بواسطة initRival عند تعريف MINISTRIES/CHARACTERS بالكامل
     decisionsUsed: [], // oneTime ids used
     decisionsLog: [],
     eventsLog: [],
@@ -81,6 +89,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     pendingDecisions: [],
     pendingEvent: null
   };
+  state.rival = initRival(state);
   return state;
 }
 
@@ -190,6 +199,18 @@ const SAVE_MIGRATIONS = {
     if (s.budget.referenceRevenue === undefined) s.budget.referenceRevenue = revenue.totalRevenue;
     s.version = 10;
     return s;
+  },
+  10: function migrateV10toV11(s) {
+    if (s.politicalCapital === undefined) s.politicalCapital = 50;
+    if (!s.actionCooldowns || typeof s.actionCooldowns !== 'object') s.actionCooldowns = {};
+    if (!Array.isArray(s.actionsLog)) s.actionsLog = [];
+    if (!s.constitution || typeof s.constitution !== 'object') {
+      s.constitution = { governmentType: null, decentralization: null, stateCharacter: null };
+    }
+    if (!Array.isArray(s.schemes)) s.schemes = [];
+    if (!s.rival) s.rival = initRival(s);
+    s.version = 11;
+    return s;
   }
 };
 
@@ -217,7 +238,8 @@ function validateStateShape(s) {
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],
     ['pendingFollowUps'], ['engineStreaks', 'austerity'], ['economy', 'worldCycle'],
-    ['budget', 'baseline'], ['budget', 'referenceRevenue']
+    ['budget', 'baseline'], ['budget', 'referenceRevenue'],
+    ['politicalCapital'], ['actionCooldowns'], ['constitution'], ['schemes'], ['rival']
   ];
   for (const path of requiredPaths) {
     let cur = s;

@@ -88,6 +88,22 @@ function applyEventOption(state, event, optionIndex) {
     scheduleFollowUp(state, option.followUp);
   }
 
+  // إقالة فعلية للشخصية المستهدفة مباشرة (يُستخدم مع dynamicTarget: 'activeSchemeInitiator' من نوع 'character')
+  if (option.dismissTargetCharacter && event._target && event._target.type === 'character') {
+    const target = getCharacter(state, event._target.id);
+    if (target && target.ministry) dismissFromMinistry(state, target.ministry);
+  }
+
+  // أثر على شعبية المنافس الانتخابي - يُستخدم عند اكتمال مؤامرة انشقاق تصب في صالحه
+  if (option.rivalApprovalDelta !== undefined && state.rival) {
+    state.rival.approval = Math.max(5, Math.min(95, state.rival.approval + option.rivalApprovalDelta));
+  }
+
+  // إنهاء المؤامرة النشطة بعد أن ردّ عليها اللاعب (اكتُشفت) أو بعد اكتمالها (نُفِّذت) - مؤامرة واحدة كحد أقصى فتصفير القائمة آمن
+  if (option.resolvesScheme) {
+    state.schemes = [];
+  }
+
   state.eventCooldowns[event.id] = state.month + (event.cooldown || DEFAULT_EVENT_COOLDOWN);
   state.eventsLog.push({ month: state.month, year: state.year, eventId: event.id, title: event.title, optionLabel: option.label });
 }

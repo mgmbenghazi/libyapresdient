@@ -68,6 +68,11 @@ function applyDecisionOption(state, decision, optionIndex) {
     applyCharacterRelationsEffect(state, decision._target.aId, decision._target.bId, option.characterRelationsEffect.delta);
   }
 
+  // قرار دستوري تأسيسي لا رجعة فيه - يُحسم مرة واحدة ويُقفل/يفتح قرارات وأحداث حصرية لاحقاً حسب المحور المختار
+  if (option.constitutionEffect) {
+    state.constitution[option.constitutionEffect.axis] = option.constitutionEffect.value;
+  }
+
   // تعديل سياسة قطاع إنتاجي بشكل دائم (ملكية/توجّه/استثمار) بدل أثر لمرة واحدة يُنسى
   if (option.sectorPolicyEffect) {
     const eff = option.sectorPolicyEffect;
@@ -96,6 +101,17 @@ function applyDecisionOption(state, decision, optionIndex) {
     }
   }
 
+  // أثر مباشر على شعبية المنافس الانتخابي (تأجيل الانتخابات، تنازلات سياسية...) دون خوض استحقاق فعلي
+  if (option.rivalApprovalDelta !== undefined && state.rival) {
+    state.rival.approval = Math.max(5, Math.min(95, state.rival.approval + option.rivalApprovalDelta));
+  }
+
+  // استحقاق انتخابي فعلي: نتيجة حقيقية تُحسم من رضاك مقابل شعبية منافسك الحي - راجع js/systems/rival.js
+  let electionResult = null;
+  if (option.electionResolution) {
+    electionResult = resolveElection(state, option.electionResolution);
+  }
+
   if (decision.oneTime) state.decisionsUsed.push(decision.id);
   if (decision.cooldown) state.decisionCooldowns[decision.id] = state.month + decision.cooldown;
 
@@ -103,4 +119,6 @@ function applyDecisionOption(state, decision, optionIndex) {
     month: state.month, year: state.year, decisionId: decision.id,
     title: decision.title, optionLabel: option.label, advisor: option.advisor || null
   });
+
+  return electionResult ? { electionResult } : undefined;
 }

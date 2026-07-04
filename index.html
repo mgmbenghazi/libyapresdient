@@ -79,6 +79,7 @@
       <button class="tab-btn" data-tab="economy">الاقتصاد</button>
       <button class="tab-btn" data-tab="characters">الحكومة والشخصيات</button>
       <button class="tab-btn" data-tab="relations">العلاقات</button>
+      <button class="tab-btn" data-tab="actions">الإجراءات الرئاسية</button>
       <button class="tab-btn" data-tab="log">السجل</button>
     </nav>
     <div class="topbar-right">
@@ -114,6 +115,7 @@
           </div>
           <div class="gauge-label" id="cmd-gauge-label"></div>
           <div class="risk-badge" id="cmd-risk-badge" title="مؤشر المخاطرة النظامية: يرفع احتمال الأحداث ووزن الأزمات كلما ارتفع"></div>
+          <div class="capital-badge" id="cmd-capital-badge" title="رأس المال السياسي: يُنفَق على الإجراءات الرئاسية الاستباقية في تبويب «الإجراءات الرئاسية»"></div>
         </div>
 
         <div class="status-block">
@@ -254,6 +256,20 @@
       </div>
     </div>
 
+    <!-- تبويب الإجراءات الرئاسية: أدوات يبادر بها اللاعب بنفسه بدل انتظار قرار/حدث يُعرض عليه -->
+    <div id="tab-actions" class="tab-panel">
+      <p class="hint">إجراءات تبدأها أنت في أي شهر - لا تنتظر عرضها عليك. كل إجراء يُستهلك من رأس المال السياسي (المعروض في مركز القيادة) وله فترة تبريد خاصة به.</p>
+      <div id="actions-grid" class="actions-grid"></div>
+
+      <h3 style="margin-top:28px">المسار الدستوري</h3>
+      <p class="hint">اختيارات تأسيسية لا رجعة فيها تحدد شكل نظام حكمك وتفتح مسارات قرارات وأحداث حصرية لاحقاً.</p>
+      <div id="constitution-panel" class="constitution-panel"></div>
+
+      <h3 style="margin-top:28px">السباق الانتخابي</h3>
+      <p class="hint">منافسك السياسي الأبرز خارج حكومتك - شعبيته تتحرك شهرياً بمعزل عنك، وتصطدم بك وقت الاستحقاق الانتخابي.</p>
+      <div id="rival-panel" class="rival-panel"></div>
+    </div>
+
     <!-- تبويب السجل -->
     <div id="tab-log" class="tab-panel">
       <h3>سجل القرارات والأحداث</h3>
@@ -295,12 +311,15 @@
 <script src="js/data/events.js"></script>
 <script src="js/data/relations.js"></script>
 <script src="js/data/characters.js"></script>
+<script src="js/data/actions.js"></script>
 <script src="js/state.js"></script>
 <script src="js/systems/economy.js"></script>
 <script src="js/systems/relations.js"></script>
 <script src="js/systems/decisions.js"></script>
 <script src="js/systems/events.js"></script>
 <script src="js/systems/characters.js"></script>
+<script src="js/systems/rival.js"></script>
+<script src="js/systems/schemes.js"></script>
 <script src="js/systems/achievements.js"></script>
 <script src="js/systems/sound.js"></script>
 <script src="js/systems/gameover.js"></script>

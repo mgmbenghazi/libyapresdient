@@ -178,6 +178,13 @@ function resolveDynamicTarget(state, kind) {
       const worst = scored.reduce((min, s) => (s.value < min.value ? s : min));
       return { type: 'region', id: worst.region.id, name: worst.region.name, value: worst.value };
     }
+    case 'activeSchemeInitiator': {
+      const scheme = (state.schemes || [])[0];
+      if (!scheme) return null;
+      const initiator = getCharacter(state, scheme.initiatorId);
+      if (!initiator) return null;
+      return { type: 'character', id: initiator.id, name: initiator.name, value: scheme.progress };
+    }
     default:
       return null;
   }

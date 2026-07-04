@@ -235,6 +235,36 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 .risk-badge.good { background: var(--good-glow); color: var(--good); }
 .risk-badge.medium { background: var(--medium-glow); color: var(--medium); }
 .risk-badge.bad { background: var(--bad-glow); color: var(--bad); }
+.capital-badge { font-size: .68rem; font-weight: 600; margin-top: 5px; padding: 2px 10px; border-radius: 20px; display: inline-block; cursor: help; background: rgba(201,162,39,.16); color: var(--gold); }
+
+/* ------- الإجراءات الرئاسية ------- */
+.actions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.action-card { background: var(--panel); border: 1px solid var(--hairline-soft); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.action-card.disabled { opacity: .55; }
+.ac-head { display: flex; align-items: center; gap: 8px; }
+.ac-icon { font-size: 1.2rem; }
+.ac-name { font-weight: 700; flex: 1; }
+.ac-cost { font-size: .78rem; color: var(--gold); font-weight: 700; }
+.ac-desc { font-size: .8rem; color: var(--text-dim); flex: 1; margin: 0; }
+.ac-status { font-size: .72rem; color: var(--text-faint); }
+
+/* ------- المسار الدستوري ------- */
+.constitution-summary { display: flex; flex-direction: column; gap: 8px; }
+.const-row { display: flex; justify-content: space-between; background: var(--panel); border-radius: 8px; padding: 10px 14px; font-size: .85rem; }
+.const-axis { color: var(--text-dim); }
+.const-value.chosen { color: var(--good); font-weight: 700; }
+.const-value.pending { color: var(--text-faint); font-style: italic; }
+
+/* ------- السباق الانتخابي ------- */
+.rival-card { background: var(--panel); border-radius: var(--radius); padding: 14px 16px; }
+.rival-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.rival-name { font-weight: 700; font-size: 1rem; }
+.rival-tag { font-size: .7rem; padding: 2px 10px; border-radius: 20px; background: var(--bad-glow); color: var(--bad); }
+.rival-bar-row { display: flex; align-items: center; gap: 10px; font-size: .82rem; color: var(--text-dim); margin-bottom: 8px; }
+.rival-bar-row .stat-bar { flex: 1; height: 8px; background: #2c3a2a; border-radius: 4px; overflow: hidden; }
+.rival-bar-row .stat-bar-fill { height: 100%; background: var(--ly-green); }
+.rival-bar-row .stat-bar-fill.medium { background: var(--medium); }
+.rival-bar-row .stat-bar-fill.bad { background: var(--bad); }
 
 .status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .icon-row { display: flex; gap: 8px; }
@@ -525,6 +555,8 @@ canvas.spark { display: block; }
 .busy-chip { background: rgba(224,167,43,.2); color: var(--medium); border: 1px solid rgba(224,167,43,.4); }
 .modal-box .modal-desc { color: var(--text-dim); line-height: 1.7; margin-bottom: 18px; }
 .modal-tag { display: inline-block; font-size: .75rem; padding: 3px 12px; border-radius: 20px; background: #2c3a2a; color: var(--text-dim); margin-bottom: 10px; }
+.modal-tag.good { background: var(--good-glow); color: var(--good); }
+.modal-tag.bad { background: var(--bad-glow); color: var(--bad); }
 .decision-options { display: flex; flex-direction: column; gap: 10px; }
 .decision-option {
   background: var(--panel-2); border: 2px solid #2c3a2a; border-radius: 10px; padding: 12px 16px; cursor: pointer;
