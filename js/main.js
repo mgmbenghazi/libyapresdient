@@ -212,6 +212,7 @@ function bindEndScreen() {
     renderScenarioList();
   });
   document.getElementById('btn-back-menu').addEventListener('click', () => {
+    renderLegacySummary(); // يعكس فوراً اللعبة التي اكتملت للتو، لا آخر حالة كانت عند أول تحميل للصفحة
     showScreen('screen-start');
   });
 }
@@ -300,6 +301,8 @@ function processQueue() {
       const outcome = applyDecisionOption(s, step.payload, idx);
       if (outcome && outcome.electionResult) {
         renderElectionResultModal(outcome.electionResult, () => processQueue());
+      } else if (outcome && outcome.unifyResult) {
+        renderUnifyResultModal(outcome.unifyResult, () => processQueue());
       } else {
         processQueue();
       }

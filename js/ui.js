@@ -1132,6 +1132,47 @@ function renderRivalPanel() {
     </div>`;
 }
 
+// ------- السيادة المنقسمة: حالة الانقسام الفعلي للبلاد منذ اليوم الأول -------
+function renderSovereigntyPanel() {
+  const s = Game.state;
+  const sov = s.sovereignty;
+  const wrap = document.getElementById('sovereignty-panel');
+  if (!wrap || !sov) return;
+
+  const controlStatus = sov.territoryControl >= 65 ? 'good' : sov.territoryControl >= 40 ? 'medium' : 'bad';
+  const rivalStatus = sov.rivalMilitaryStrength >= 65 ? 'bad' : sov.rivalMilitaryStrength >= 40 ? 'medium' : 'good';
+  const backerFlags = ids => ids.map(id => COUNTRY_FLAGS[id] || '🏳️').join(' ');
+
+  const blockadeBanner = sov.oilBlockade && sov.oilBlockade.active
+    ? `<div class="risk-strip">🛢️⚠ حصار نفطي نشط من قوات ${sov.rivalAuthorityName} - يتبقى ${sov.oilBlockade.monthsLeft} شهراً</div>`
+    : '';
+
+  const institutionsPills = `
+    <span class="modal-tag ${sov.centralBankSplit ? 'bad' : 'good'}">🏦 المصرف المركزي: ${sov.centralBankSplit ? 'منقسم' : 'موحّد'}</span>
+    <span class="modal-tag ${sov.nocSplit ? 'bad' : 'good'}">🛢️ شركة النفط: ${sov.nocSplit ? 'منقسمة' : 'موحّدة'}</span>`;
+
+  wrap.innerHTML = `
+    <h3 class="section-title"><span class="st-icon">🗺️</span> السيادة المنقسمة</h3>
+    ${sov.reunified ? '<div class="modal-tag good" style="margin-bottom:10px">🎉 تم توحيد ليبيا فعلياً تحت سلطتك</div>' : ''}
+    ${blockadeBanner}
+    <div class="rival-card">
+      <div class="rival-head"><span class="rival-name">سيطرتك الفعلية على البلاد</span><span class="rival-tag">${Math.round(sov.territoryControl)}%</span></div>
+      <div class="rival-bars">
+        <div class="rival-bar-row"><span>أراضٍ تحت سلطتك</span><div class="stat-bar"><div class="stat-bar-fill ${controlStatus}" style="width:${sov.territoryControl}%"></div></div><b>${Math.round(sov.territoryControl)}%</b></div>
+      </div>
+      <div class="rival-head" style="margin-top:14px"><span class="rival-name">${sov.rivalAuthorityName}</span><span class="rival-tag">قوة عسكرية مدعومة خارجياً</span></div>
+      <div class="rival-bars">
+        <div class="rival-bar-row"><span>قوة الجيش الموازي</span><div class="stat-bar"><div class="stat-bar-fill ${rivalStatus}" style="width:${sov.rivalMilitaryStrength}%"></div></div><b>${Math.round(sov.rivalMilitaryStrength)}%</b></div>
+      </div>
+      <div class="ac-desc" style="margin-top:8px">داعمو الطرف الآخر: ${backerFlags(sov.rivalBackers)} — داعمك الرئيسي: ${backerFlags(sov.playerBackers)}</div>
+    </div>
+    <div style="margin-top:12px">${institutionsPills}</div>
+    <div class="rival-bars" style="margin-top:14px">
+      <div class="rival-bar-row"><span>مسار انتخابات موحدة</span><div class="stat-bar"><div class="stat-bar-fill ${sov.unifiedElectionsProgress >= 100 ? 'good' : 'medium'}" style="width:${sov.unifiedElectionsProgress}%"></div></div><b>${Math.round(sov.unifiedElectionsProgress)}%</b></div>
+    </div>
+    <div class="ac-desc">انهار المسار ${sov.unifiedElectionsDerailments || 0} مرة حتى الآن${sov.unifiedElectionsDerailments ? ' - كما حدث فعلياً في التجربة الليبية الحقيقية' : ''}.</div>`;
+}
+
 function renderLogTab() {
   const s = Game.state;
   const wrap = document.getElementById('log-list');
@@ -1156,6 +1197,7 @@ function renderLogTab() {
 function renderGameScreen() {
   renderHUD();
   renderCommandBar();
+  renderSovereigntyPanel();
   renderLegacyTimeline();
   renderRumorBanner();
   renderAttentionStrip();
@@ -1271,6 +1313,23 @@ function renderElectionResultModal(result, onClose) {
   const cleanWin = result.won && !result.caught;
   if (cleanWin) playMilestone();
   showModal(html, { crisis: !cleanWin, celebrate: cleanWin, onDismiss: dismiss });
+  document.getElementById('modal-continue').addEventListener('click', dismiss);
+}
+
+// نتيجة اللحظة التاريخية: محاولة إعادة توحيد ليبيا فعلياً بعد اكتمال مسار الانتخابات الموحدة
+function renderUnifyResultModal(result, onClose) {
+  const tag = result.success ? 'إعادة توحيد ليبيا' : 'انهيار مسار التوحيد';
+  const body = result.success
+    ? `تفوّقت سيطرتك الفعلية على الأرض (${result.territoryControl}%) على قوة السلطة الموازية (${result.rivalMilitaryStrength}%) - لأول مرة منذ أكثر من عقد من الانقسام، تتوحد مؤسسات الدولة السيادية تحت سلطة واحدة.`
+    : `لم تكن موازين القوى الفعلية (سيطرتك ${result.territoryControl}% مقابل قوة الطرف الآخر ${result.rivalMilitaryStrength}%) كافية لحسم الاستحقاق - ينهار المسار مجدداً كما حدث فعلياً أكثر من مرة منذ 2021، وتعود نقطة الصفر.`;
+  const html = `
+    <span class="modal-tag ${result.success ? 'good' : 'bad'}">${tag}</span>
+    <h2>${result.success ? 'توحّدت ليبيا تحت سلطتك' : 'انهار مسار التوحيد مجدداً'}</h2>
+    <p class="modal-desc">${body}</p>
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
+  const dismiss = () => { hideModal(); onClose(); };
+  if (result.success) playMilestone();
+  showModal(html, { crisis: !result.success, celebrate: result.success, onDismiss: dismiss });
   document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 

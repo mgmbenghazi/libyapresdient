@@ -78,5 +78,12 @@ function regionLayerValue(state, regionId, layer) {
     const base = ((state.indicators.infrastructureLevel + state.indicators.economicDevelopment) / 2) * 0.5 + sectorMix * 0.5;
     return Math.max(0, Math.min(100, base * (region.developmentWeight || 1)));
   }
+  if (layer === 'sovereignty' && state.sovereignty) {
+    const sov = state.sovereignty;
+    // الشرق هو معقل السلطة الموازية فعلياً - قيمته تُقاس عكسياً بقوة جيشها؛ الغرب معقلك؛ الجنوب الأكثر تنازعاً واقعياً
+    if (regionId === 'east') return Math.max(0, Math.min(100, 100 - sov.rivalMilitaryStrength));
+    if (regionId === 'south') return Math.max(0, Math.min(100, sov.territoryControl - 25));
+    return Math.max(0, Math.min(100, sov.territoryControl + 15));
+  }
   return loyalty; // 'loyalty' الافتراضي
 }

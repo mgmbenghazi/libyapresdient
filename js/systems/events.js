@@ -109,6 +109,25 @@ function applyEventOption(state, event, optionIndex) {
     state.monetaryPolicy.exchangeRegime = option.setExchangeRegime;
   }
 
+  // أثر مباشر على حالة السيادة المنقسمة - راجع js/systems/sovereignty.js
+  if (option.sovereigntyEffect && state.sovereignty) {
+    const eff = option.sovereigntyEffect;
+    const sov = state.sovereignty;
+    if (eff.territoryControlDelta !== undefined) sov.territoryControl = Math.max(5, Math.min(98, sov.territoryControl + eff.territoryControlDelta));
+    if (eff.rivalMilitaryStrengthDelta !== undefined) sov.rivalMilitaryStrength = Math.max(5, Math.min(98, sov.rivalMilitaryStrength + eff.rivalMilitaryStrengthDelta));
+    if (eff.unifiedElectionsProgressDelta !== undefined) sov.unifiedElectionsProgress = Math.max(0, Math.min(100, sov.unifiedElectionsProgress + eff.unifiedElectionsProgressDelta));
+    if (eff.centralBankSplit !== undefined) sov.centralBankSplit = eff.centralBankSplit;
+    if (eff.nocSplit !== undefined) sov.nocSplit = eff.nocSplit;
+  }
+
+  // ضبط مباشر لحالة الحصار النفطي - يُستخدم من خيارات حدث "حصار نفطي" لإنهائه فوراً أو تقصير مدته
+  if (option.oilBlockadeEffect && state.sovereignty) {
+    state.sovereignty.oilBlockade = {
+      active: !!option.oilBlockadeEffect.active,
+      monthsLeft: option.oilBlockadeEffect.monthsLeft || 0
+    };
+  }
+
   state.eventCooldowns[event.id] = state.month + (event.cooldown || DEFAULT_EVENT_COOLDOWN);
   state.eventsLog.push({ month: state.month, year: state.year, eventId: event.id, title: event.title, optionLabel: option.label });
 }

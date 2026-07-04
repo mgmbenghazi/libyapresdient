@@ -78,6 +78,22 @@ const ACTIONS = [
     }
   },
   {
+    id: 'sovereign_institutions_talks', name: 'مفاوضات توحيد المؤسسات السيادية', icon: '🏦', cost: 30, cooldown: 8,
+    description: 'تفتح قناة تفاوض مباشرة لتوحيد المصرف المركزي وشركة النفط بين فرعيهما المنقسمين - نجاحها يُنهي احتكاك الانقسام المؤسسي على العائد النفطي دون ثمن إضافي عند الفشل.',
+    condition: s => s.sovereignty && (s.sovereignty.centralBankSplit || s.sovereignty.nocSplit),
+    execute(state) {
+      const sov = state.sovereignty;
+      const successChance = Math.max(0.1, Math.min(0.75, 0.3 + (sov.territoryControl - sov.rivalMilitaryStrength) / 200));
+      if (Math.random() < successChance) {
+        sov.centralBankSplit = false;
+        sov.nocSplit = false;
+        applyEffects(state, { internationalSupport: 3 });
+        return { message: 'توصّل الطرفان لاتفاق توحيد مؤسسي فعلي - يتدفق العائد النفطي كاملاً دون احتكاك من الآن فصاعداً.' };
+      }
+      return { message: 'تعثرت مفاوضات التوحيد المؤسسي هذه الجولة دون اتفاق - الانقسام المؤسسي مستمر كما هو.' };
+    }
+  },
+  {
     id: 'fx_intervention', name: 'تدخل مباشر في سوق الصرف', icon: '💱', cost: 25, cooldown: 4,
     description: 'يبيع المصرف المركزي جزءاً من احتياطي النقد الأجنبي مباشرة في السوق لدعم العملة المحلية وكبح التضخم فوراً - أداة سريعة لكنها تستهلك مورداً محدوداً.',
     condition: s => s.indicators.forexReserves > 1000,

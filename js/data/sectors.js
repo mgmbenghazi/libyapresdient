@@ -104,7 +104,9 @@ const ACHIEVEMENTS = [
   { id: 'election_winner', name: 'المنتخَب شعبياً', desc: 'فزت باستحقاق انتخابي حقيقي أمام منافس حي بشعبية أعلى من شعبيته وقت الاقتراع.',
     check: s => s.decisionsUsed.includes('election_call') && s.rival && s.indicators.satisfaction >= s.rival.approval },
   { id: 'constitution_framer', name: 'واضع الدستور', desc: 'حسمت المسار الدستوري الكامل لدولتك: نظام الحكم واللامركزية وطابع الدولة.',
-    check: s => s.constitution.governmentType && s.constitution.decentralization && s.constitution.stateCharacter }
+    check: s => s.constitution.governmentType && s.constitution.decentralization && s.constitution.stateCharacter },
+  { id: 'libya_unifier', name: 'موحّد ليبيا', desc: 'أنهيت أكثر من عقد من الانقسام وأعدت توحيد مؤسسات الدولة السيادية تحت سلطة واحدة فعلياً.',
+    check: s => !!(s.sovereignty && s.sovereignty.reunified) }
 ];
 
 function clampIndicator(key, value) {

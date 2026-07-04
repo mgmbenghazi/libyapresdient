@@ -35,7 +35,15 @@ function estimateMonthlyRevenue(state) {
   const tourismShare = OWNERSHIP_PROFILES[sp.tourism.ownership].revenueShare;
   const industryShare = OWNERSHIP_PROFILES[sp.industry.ownership].revenueShare;
 
-  const oilRevenue = ind.oilProduction * 30 * oilPriceFactor * 0.9 * oilShare;
+  let oilRevenue = ind.oilProduction * 30 * oilPriceFactor * 0.9 * oilShare;
+  // السيادة المنقسمة: حصار نفطي من قوات موالية للسلطة الموازية يشلّ التصدير شبه كلياً (كما حدث فعلياً
+  // في 2020)، وانقسام المصرف المركزي/شركة النفط يؤخر جزءاً من العائد حتى مع تدفق التصدير طبيعياً
+  const sov = state.sovereignty;
+  if (sov) {
+    if (sov.oilBlockade && sov.oilBlockade.active) oilRevenue *= 0.12;
+    if (sov.nocSplit) oilRevenue *= 0.94;
+    if (sov.centralBankSplit) oilRevenue *= 0.94;
+  }
   const agricultureRevenue = ind.agricultureLevel * 12 * agriShare * (0.5 + sp.agriculture.orientation / 200);
   const tourismRevenue = ind.tourismLevel * 15 * tourismShare;
   const industryRevenue = ind.industryLevel * 14 * industryShare;
@@ -116,6 +124,10 @@ function monthlyEconomicTick(state) {
   const ind = state.indicators;
   const eco = state.economy;
   const alloc = state.budget.allocations;
+  const sov = state.sovereignty;
+
+  // 0) السيادة المنقسمة: يُحسب أولاً كي تنعكس حالة الحصار النفطي فوراً على إيراد هذا الشهر تحديداً
+  monthlySovereigntyTick(state);
 
   // 1) تقلب سعر النفط العالمي (مشي عشوائي منحاز حسب الدورة الاقتصادية العالمية الجارية)
   const cycle = advanceWorldCycle(state);
@@ -343,6 +355,15 @@ function monthlyEconomicTick(state) {
   }
   if (eco.worldCycle !== 'normal') {
     attributions.push({ label: `الاقتصاد العالمي في مرحلة "${cycle.label}" تنعكس على النمو وسعر النفط`, impact: 35 });
+  }
+  if (sov && sov.oilBlockade && sov.oilBlockade.active) {
+    attributions.push({ label: `حصار نفطي من قوات ${sov.rivalAuthorityName} يشلّ معظم الصادرات (يتبقى ${sov.oilBlockade.monthsLeft} شهراً)`, impact: 90 });
+  }
+  if (sov && (sov.centralBankSplit || sov.nocSplit) && !(sov.oilBlockade && sov.oilBlockade.active)) {
+    attributions.push({ label: 'انقسام المصرف المركزي وشركة النفط يؤخر جزءاً من العائد النفطي الفعلي', impact: 25 });
+  }
+  if (sov && Math.round(sov.territoryControl) % 10 === 0 && sov.territoryControl >= 85) {
+    attributions.push({ label: `سيطرتك الفعلية على البلاد بلغت ${Math.round(sov.territoryControl)}% - اقتراب حقيقي من إعادة التوحيد`, impact: 20 });
   }
   if (monetary.exchangeRegime === 'fixed' && state.engineStreaks.fxReserveCrisis >= 2) {
     attributions.push({ label: 'الدفاع عن سعر الصرف المثبَّت يستنزف الاحتياطي الأجنبي بسرعة', impact: 45 });

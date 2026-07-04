@@ -106,10 +106,28 @@ function applyDecisionOption(state, decision, optionIndex) {
     state.rival.approval = Math.max(5, Math.min(95, state.rival.approval + option.rivalApprovalDelta));
   }
 
+  // أثر مباشر على حالة السيادة المنقسمة (سيطرة على الأرض، قوة السلطة الموازية، تقدّم مسار الانتخابات
+  // الموحدة) - يُستخدم من قرارات التفاوض ومحاولات إعادة التوحيد دون المرور بحدث حصار كامل
+  if (option.sovereigntyEffect && state.sovereignty) {
+    const eff = option.sovereigntyEffect;
+    const sov = state.sovereignty;
+    if (eff.territoryControlDelta !== undefined) sov.territoryControl = Math.max(5, Math.min(98, sov.territoryControl + eff.territoryControlDelta));
+    if (eff.rivalMilitaryStrengthDelta !== undefined) sov.rivalMilitaryStrength = Math.max(5, Math.min(98, sov.rivalMilitaryStrength + eff.rivalMilitaryStrengthDelta));
+    if (eff.unifiedElectionsProgressDelta !== undefined) sov.unifiedElectionsProgress = Math.max(0, Math.min(100, sov.unifiedElectionsProgress + eff.unifiedElectionsProgressDelta));
+    if (eff.centralBankSplit !== undefined) sov.centralBankSplit = eff.centralBankSplit;
+    if (eff.nocSplit !== undefined) sov.nocSplit = eff.nocSplit;
+  }
+
   // استحقاق انتخابي فعلي: نتيجة حقيقية تُحسم من رضاك مقابل شعبية منافسك الحي - راجع js/systems/rival.js
   let electionResult = null;
   if (option.electionResolution) {
     electionResult = resolveElection(state, option.electionResolution);
+  }
+
+  // محاولة إعادة توحيد ليبيا فعلياً بعد اكتمال مسار الانتخابات الموحدة - راجع js/systems/sovereignty.js
+  let unifyResult = null;
+  if (option.unifyResolution) {
+    unifyResult = resolveUnification(state);
   }
 
   if (decision.oneTime) state.decisionsUsed.push(decision.id);
@@ -120,5 +138,7 @@ function applyDecisionOption(state, decision, optionIndex) {
     title: decision.title, optionLabel: option.label, advisor: option.advisor || null
   });
 
-  return electionResult ? { electionResult } : undefined;
+  if (electionResult) return { electionResult };
+  if (unifyResult) return { unifyResult };
+  return undefined;
 }

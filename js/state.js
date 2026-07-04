@@ -19,7 +19,10 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 12: + معدِّلات التحدي الاختيارية النشطة لهذه اللعبة (activeChallenges) - جزء من إرث الرئاسة الدائم
 // 13: + السياسة النقدية الدائمة (monetaryPolicy): سعر الفائدة الأساسي ونظام سعر الصرف، وخيار "طباعة نقدية"
 //     ضمن استراتيجية تمويل العجز + عدّاد أزمة نفاد احتياطي (fxReserveCrisis) ضمن engineStreaks
-const CURRENT_SAVE_VERSION = 13;
+// 14: + السيادة المنقسمة (sovereignty): سلطة موازية بجيشها وداعميها الأجانب، حصار نفطي، انقسام المصرف
+//     المركزي وشركة النفط، ومسار انتخابات موحدة قابل للانهيار - يعكس واقع ليبيا منذ 2014
+//     + عدّاد توتر السيادة (sovereigntyTension) ضمن engineStreaks
+const CURRENT_SAVE_VERSION = 14;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices, challengeIds) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -47,6 +50,10 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     interestRate: 5, // % - الحياد المرجعي؛ رفعه يكبح التضخم ويبطئ النمو قليلاً، خفضه عكس ذلك
     exchangeRegime: 'managed' // 'fixed' (تثبيت) | 'managed' (تعويم مُدار) | 'float' (تعويم حر)
   };
+  // السيادة المنقسمة: لا رئيس منذ أكثر من 14 عاماً سيطر على ليبيا بالكامل - سلطة موازية حقيقية بجيشها
+  // وداعميها الأجانب (لا مجرد منافس انتخابي)، ومؤسستان سياديتان منقسمتان (المصرف المركزي وشركة النفط)
+  // تُستخدمان كأداة ضغط سياسي عبر حصار نفطي دوري، ومسار انتخابات موحدة قابل للانهيار مراراً كما حدث فعلياً
+  const sovereignty = { ...(scenario.sovereignty || DEFAULT_SOVEREIGNTY) };
   // إيراد مرجعي محسوب من مؤشرات بداية السيناريو الفعلية (لا رقم عالمي ثابت) - يُستخدم فقط لاشتقاق
   // خط أساس التمويل "الكافي" لكل بند ميزانية، ويبقى ثابتاً طوال اللعبة كي لا يتحرك الهدف مع كل تقلب إيراد لحظي
   const referenceRevenue = estimateMonthlyRevenue({ indicators, sectorPolicies, macroPolicy, economy }).totalRevenue;
@@ -68,6 +75,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     sectorPolicies,
     macroPolicy,
     monetaryPolicy,
+    sovereignty,
     relations: {
       tribes: TRIBES.map(t => ({ ...t })),
       parties: PARTIES.map(p => ({ ...p })),
@@ -81,7 +89,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     eventCooldowns: {}, // id -> month usable again
     relationsCooldowns: {}, // "kind:id" -> month usable again لإجراء "تواصل" المباشر
     pendingFollowUps: [], // {id, kind:'decision'|'event', dueMonth} - سلاسل أزمات مجدولة من قرارات/أحداث سابقة
-    engineStreaks: { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
+    engineStreaks: { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0, sovereigntyTension: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
     politicalCapital: 50, // مورد يُنفَق على الإجراءات الرئاسية الاستباقية (ACTIONS في data/actions.js)
     actionCooldowns: {}, // actionId -> month usable again
     actionsLog: [],
@@ -235,6 +243,16 @@ const SAVE_MIGRATIONS = {
     if (s.engineStreaks.fxReserveCrisis === undefined) s.engineStreaks.fxReserveCrisis = 0;
     s.version = 13;
     return s;
+  },
+  13: function migrateV13toV14(s) {
+    if (!s.sovereignty || typeof s.sovereignty !== 'object') {
+      const scenario = SCENARIOS.find(sc => sc.id === s.scenarioId);
+      s.sovereignty = { ...((scenario && scenario.sovereignty) || DEFAULT_SOVEREIGNTY) };
+    }
+    if (!s.engineStreaks || typeof s.engineStreaks !== 'object') s.engineStreaks = { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0, sovereigntyTension: 0 };
+    if (s.engineStreaks.sovereigntyTension === undefined) s.engineStreaks.sovereigntyTension = 0;
+    s.version = 14;
+    return s;
   }
 };
 
@@ -258,6 +276,7 @@ function validateStateShape(s) {
     ['presidentName'], ['month'], ['year'],
     ['indicators', 'satisfaction'], ['indicators', 'treasury'],
     ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'], ['macroPolicy', 'fuelSubsidyLevel'], ['monetaryPolicy', 'interestRate'],
+    ['sovereignty', 'territoryControl'], ['sovereignty', 'rivalMilitaryStrength'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],

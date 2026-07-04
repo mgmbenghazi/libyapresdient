@@ -321,6 +321,32 @@ const EVENTS = [
     ]
   },
   {
+    id: 'oil_blockade_crisis', severity: 'crisis', category: 'economic', title: 'حصار نفطي من قوات السلطة الموازية',
+    description: 'تحرّكت قوات موالية للسلطة الموازية شرقاً وأغلقت حقول وموانئ نفطية رئيسية في الهلال النفطي كأداة ضغط سياسي - بالضبط كما حدث فعلياً أكثر من مرة منذ 2013، مهددة بشلّ الإيرادات النفطية بالكامل ما لم يُستجب لمطالبها.',
+    weight: 5, cooldown: 12,
+    options: [
+      { label: 'قبول تقاسم عادل لعائدات النفط عبر الفرعين المنقسمين لشركة النفط', advisor: 'المستشار الاقتصادي: ينهي الحصار سريعاً لكنه يُكرّس الانقسام المؤسسي بدل معالجته.',
+        immediate: { politicalStability: -2 }, oilBlockadeEffect: { active: false, monthsLeft: 0 } },
+      { label: 'حملة عسكرية سريعة لاستعادة الحقول والموانئ بالقوة', advisor: 'اللواء الأمني: يقصّر الحصار لكنه يستنزف الأمن والخزينة، ويخاطر بتصعيد شامل مع الطرف الآخر.',
+        immediate: { security: -3, treasury: -3000 }, sovereigntyEffect: { territoryControlDelta: 3 }, oilBlockadeEffect: { active: true, monthsLeft: 1 } },
+      { label: 'مناشدة الأمم المتحدة للضغط الدولي من أجل إعادة الفتح', immediate: { internationalSupport: 2 },
+        relationsEffect: { type: 'org', id: 'un', delta: 8 } },
+      { label: 'تحمّل الحصار دون تدخل مباشر وانتظار انفراجه ذاتياً', immediate: { satisfaction: -4, treasury: -1000 } }
+    ]
+  },
+  {
+    id: 'rival_foreign_reinforcement', category: 'international', title: 'تعزيز عسكري أجنبي يصل للسلطة الموازية',
+    description: 'وصلت شحنة أسلحة وخبراء عسكريين أجانب لدعم السلطة الموازية شرقاً، في مشهد متكرر يعكس تنافس القوى الإقليمية والدولية على النفوذ في ليبيا منذ سنوات.',
+    weight: 4, minMonth: 3, cooldown: 10,
+    options: [
+      { label: 'احتجاج دبلوماسي رسمي حازم على الدعم الأجنبي للطرف الآخر', immediate: { internationalSupport: 1 },
+        sovereigntyEffect: { rivalMilitaryStrengthDelta: 5 } },
+      { label: 'طلب تعزيز عسكري مقابل من حليفك الخارجي لموازنة الكفة', immediate: { security: 2 },
+        sovereigntyEffect: { rivalMilitaryStrengthDelta: 3, territoryControlDelta: 1 } },
+      { label: 'قبول الأمر الواقع دون رد فعل يُصعّد الموقف', immediate: {}, sovereigntyEffect: { rivalMilitaryStrengthDelta: 6 } }
+    ]
+  },
+  {
     id: 'currency_devaluation_crisis', severity: 'crisis', category: 'economic', title: 'أزمة عملة: نفاد الاحتياطي الأجنبي',
     description: 'استنزف الدفاع المتواصل عن سعر الصرف المثبَّت الاحتياطي الأجنبي إلى مستوى حرج، وبدأت تظهر علامات هلع في السوق الموازية مع تسارع المضاربة ضد العملة المحلية.',
     condition: s => s.monetaryPolicy && s.monetaryPolicy.exchangeRegime === 'fixed',

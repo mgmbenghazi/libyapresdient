@@ -138,6 +138,9 @@
         </div>
       </div>
 
+      <!-- لوحة السيادة المنقسمة: حالة الانقسام الفعلي للبلاد منذ اليوم الأول -->
+      <div class="panel-frame sovereignty-panel" id="sovereignty-panel"></div>
+
       <!-- خط زمني مصيري: أبرز القرارات اللارجعة والأزمات الكبرى المتراكمة عبر فترتك -->
       <div id="legacy-timeline" class="legacy-timeline" style="display:none"></div>
 
@@ -159,7 +162,7 @@
         <div class="panel-frame">
           <h3 class="section-title" style="margin-bottom:8px">🗺️ الخريطة التفاعلية</h3>
           <div class="layer-toggle" id="map-layer-toggle">
-            <span data-layer="loyalty" class="active">الولاء</span><span data-layer="security">الأمن</span><span data-layer="development">التنمية</span>
+            <span data-layer="loyalty" class="active">الولاء</span><span data-layer="security">الأمن</span><span data-layer="development">التنمية</span><span data-layer="sovereignty">السيادة</span>
           </div>
           <div class="map-svg-wrap">
             <svg id="libya-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
@@ -334,6 +337,7 @@
 <script src="js/data/characters.js"></script>
 <script src="js/data/actions.js"></script>
 <script src="js/state.js"></script>
+<script src="js/systems/sovereignty.js"></script>
 <script src="js/systems/economy.js"></script>
 <script src="js/systems/relations.js"></script>
 <script src="js/systems/decisions.js"></script>

@@ -546,6 +546,30 @@ const DECISIONS = [
     ]
   },
   {
+    id: 'rival_dialogue_channel', category: 'political', type: 'strategic', title: 'قناة حوار سياسي مع الإدارة الموازية',
+    description: 'تقترح الأمم المتحدة استئناف جولة حوار مباشرة بين وفدك ووفد السلطة الموازية شرقاً حول الملفات العالقة: توحيد المؤسسات السيادية، تقاسم عائدات النفط، وخارطة طريق انتخابية.',
+    minMonth: 4, cooldown: 8,
+    options: [
+      { label: 'تقديم تنازلات حقيقية مقابل تقدّم ملموس في مسار التوحيد', advisor: 'المستشار الدبلوماسي: يُضعف موقفك التفاوضي الفوري لكنه الطريق الوحيد الواقعي لإنهاء الانقسام فعلياً.',
+        immediate: { politicalStability: -1 }, sovereigntyEffect: { unifiedElectionsProgressDelta: 12, rivalMilitaryStrengthDelta: -3 } },
+      { label: 'موقف تفاوضي متوازن دون تنازلات كبرى', immediate: {}, sovereigntyEffect: { unifiedElectionsProgressDelta: 4 } },
+      { label: 'رفض الجلوس مع طرف تعتبره غير شرعي', advisor: 'المستشار السياسي: يُرضي المتشددين في صفك لكنه يُجمّد أي أفق لحل سياسي، ويُبقي الانقسام كما هو.',
+        immediate: { internationalSupport: -3 }, sovereigntyEffect: { rivalMilitaryStrengthDelta: 2 } }
+    ]
+  },
+  {
+    id: 'unified_elections_breakthrough', category: 'political', type: 'strategic', title: 'مسار توحيد ليبيا: استحقاق تاريخي',
+    description: 'بعد مسار طويل من الحوار والوساطة الدولية، اقترب مسار الانتخابات الموحدة التي تشمل كل البلاد من الاكتمال فعلياً - أول استحقاق حقيقي من نوعه منذ أكثر من عقد من الانقسام. اللحظة حاسمة ولا تحتمل التردد الطويل.',
+    pivotal: true, condition: s => s.sovereignty.unifiedElectionsProgress >= 100 && !s.sovereignty.reunified,
+    cooldown: 6,
+    options: [
+      { label: 'المضي في الاستحقاق الموحد الآن بمراقبة دولية كاملة', advisor: 'المستشار الدبلوماسي: النتيجة تُحسم فعلياً من ميزان القوى الحقيقي على الأرض، لا من حسن النوايا وحده.',
+        unifyResolution: true },
+      { label: 'التريث لتحسين موقفك التفاوضي والعسكري أولاً', advisor: 'اللواء الأمني: تأجيل حكيم إن كانت الكفة لا تزال مائلة لصالح الطرف الآخر - لكن كل تأخير يمنحه وقتاً للتعزز أيضاً.',
+        immediate: { politicalStability: -1 }, sovereigntyEffect: { unifiedElectionsProgressDelta: -20 } }
+    ]
+  },
+  {
     id: 'election_call', category: 'political', type: 'strategic', title: 'الدعوة لانتخابات برلمانية منتصف المدة',
     description: 'حان موعد استحقاق دستوري لتجديد الشرعية عبر صناديق الاقتراع في منتصف فترتك الرئاسية - نتيجة هذا الاستحقاق تُحسم فعلياً من شعبيتك الحقيقية مقابل شعبية منافسك، لا شكلاً بروتوكولياً.',
     pivotal: true, minMonth: 20, oneTime: true,

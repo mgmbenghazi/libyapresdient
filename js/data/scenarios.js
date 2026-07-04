@@ -1,10 +1,25 @@
-// سيناريوهات بداية اللعبة
+// السيادة المنقسمة الافتراضية: تُستخدم إن لم يحدد السيناريو قيماً خاصة به، ولترقيع الحفظ القديم (migration v14)
+const DEFAULT_SOVEREIGNTY = {
+  territoryControl: 50, // % من البلاد تحت سلطتك الفعلية فعلاً لا الاسمية فقط
+  rivalAuthorityName: 'الإدارة الموازية في الشرق',
+  rivalMilitaryStrength: 50, // 0-100: قوة الجيش الموازي المدعوم خارجياً
+  rivalBackers: ['russia', 'egypt', 'gulf'], // الدول التي تُقوّي الطرف الآخر كلما ساءت علاقتك بها
+  playerBackers: ['turkey'], // الدولة التي تدعم سلطتك المعترف بها أممياً عسكرياً
+  centralBankSplit: true, // انقسام المصرف المركزي يؤخر جزءاً من الإيراد الفعلي شهرياً
+  nocSplit: true, // انقسام إدارة شركة النفط بين الفرعين
+  oilBlockade: { active: false, monthsLeft: 0 },
+  unifiedElectionsProgress: 0, // 0-100: تقدّم مسار انتخابات موحدة تشمل كل البلاد
+  unifiedElectionsDerailments: 0 // عدد مرات انهيار المسار - كما حدث فعلياً أكثر من مرة منذ 2021
+};
+
+// سيناريوهات بداية اللعبة - كلها تبدأ من واقع السيادة المنقسمة نفسه (لا رئيس منذ أكثر من 14 عاماً
+// سيطر على ليبيا بالكامل)، لكن بدرجات تشتت مختلفة تعكس مراحل مختلفة من الأزمة الليبية الفعلية
 const SCENARIOS = [
   {
     id: 'stable',
-    name: 'ليبيا المستقرة',
+    name: 'ليبيا: هدنة هشة',
     difficulty: 'متوسطة',
-    description: 'البلاد في حالة استقرار نسبي، لكنها تواجه تحديات اقتصادية هيكلية وضغوطاً متزايدة لتنويع مصادر الدخل.',
+    description: 'حكومتك معترف بها أممياً وتسيطر على العاصمة والغرب، لكن إدارة موازية في الشرق تحكم فعلياً نصف البلاد بجيشها الخاص ودعم أجنبي متنافس. المصرف المركزي وشركة النفط منقسمان، والانتخابات الموحدة مؤجَّلة منذ سنوات.',
     startIndicators: {
       satisfaction: 55, budgetBalance: -5, treasury: 8000, gdpGrowth: 2.0,
       unemployment: 19, inflation: 6, forexReserves: 70000, publicDebt: 35,
@@ -13,13 +28,14 @@ const SCENARIOS = [
       infrastructureLevel: 48, security: 62, economicDevelopment: 45,
       agricultureLevel: 40, tourismLevel: 30, industryLevel: 35, tradeBalance: -8
     },
-    startTreasuryNote: 'خزينة الدولة في وضع مقبول مع عجز طفيف قابل للإدارة.'
+    startTreasuryNote: 'خزينة الدولة في وضع مقبول مع عجز طفيف قابل للإدارة.',
+    sovereignty: { ...DEFAULT_SOVEREIGNTY, territoryControl: 55, rivalMilitaryStrength: 45, unifiedElectionsProgress: 15 }
   },
   {
     id: 'post-crisis',
-    name: 'ليبيا ما بعد الأزمة',
+    name: 'ليبيا: انهيار طازج',
     difficulty: 'صعبة',
-    description: 'البلاد خارجة للتو من أزمة سياسية وأمنية حادة. التحديات الأمنية والاقتصادية كبيرة، والثقة الشعبية بالحكومة منخفضة.',
+    description: 'خرجت البلاد للتو من جولة اشتباك عسكري مباشر بين سلطتك والإدارة الموازية شرقاً. حصار نفطي أخير كاد يُفلس الخزينة، وقوات أجنبية داعمة للطرف الآخر تحتشد على خطوط التماس. الثقة الشعبية بأي حل سياسي منخفضة جداً.',
     startIndicators: {
       satisfaction: 35, budgetBalance: -18, treasury: 3000, gdpGrowth: -1.5,
       unemployment: 28, inflation: 14, forexReserves: 35000, publicDebt: 55,
@@ -28,13 +44,14 @@ const SCENARIOS = [
       infrastructureLevel: 30, security: 35, economicDevelopment: 28,
       agricultureLevel: 25, tourismLevel: 15, industryLevel: 20, tradeBalance: -20
     },
-    startTreasuryNote: 'خزينة شبه فارغة وعجز كبير في الميزانية.'
+    startTreasuryNote: 'خزينة شبه فارغة وعجز كبير في الميزانية.',
+    sovereignty: { ...DEFAULT_SOVEREIGNTY, territoryControl: 35, rivalMilitaryStrength: 65, unifiedElectionsProgress: 0 }
   },
   {
     id: 'oil-boom',
-    name: 'ليبيا الازدهار النفطي',
+    name: 'ليبيا: ازدهار نفطي متنازع عليه',
     difficulty: 'سهلة',
-    description: 'ارتفاع حاد في أسعار النفط العالمية يمنح البلاد فرصة ذهبية للتنمية، لكن مع ضغوط دولية متزايدة وترقب من القوى الكبرى.',
+    description: 'ارتفاع حاد في أسعار النفط يمنح خزينتك فائضاً مريحاً، لكنه يرفع أيضاً قيمة الجائزة التي تتنازع عليها مع الإدارة الموازية - كل طرف يريد حصة أكبر من عوائد الهلال النفطي عبر فرعه الخاص من شركة النفط.',
     startIndicators: {
       satisfaction: 62, budgetBalance: 12, treasury: 25000, gdpGrowth: 5.5,
       unemployment: 15, inflation: 5, forexReserves: 140000, publicDebt: 18,
@@ -43,13 +60,14 @@ const SCENARIOS = [
       infrastructureLevel: 52, security: 60, economicDevelopment: 55,
       agricultureLevel: 45, tourismLevel: 38, industryLevel: 42, tradeBalance: 15
     },
-    startTreasuryNote: 'فائض مالي مريح بفضل ارتفاع عائدات النفط.'
+    startTreasuryNote: 'فائض مالي مريح بفضل ارتفاع عائدات النفط.',
+    sovereignty: { ...DEFAULT_SOVEREIGNTY, territoryControl: 60, rivalMilitaryStrength: 50, unifiedElectionsProgress: 20 }
   },
   {
     id: 'future',
-    name: 'ليبيا المستقبل',
+    name: 'ليبيا: انقسام طويل الأمد',
     difficulty: 'صعبة',
-    description: 'سيناريو مستقبلي حيث بدأت مصادر الطاقة البديلة تهدد الطلب العالمي على النفط. تنويع الاقتصاد أصبح ضرورة وجودية لا خياراً.',
+    description: 'مرّت سنوات طويلة على الانقسام دون حسم - كلا الطرفين ترسّخ في منطقته، ومصادر الطاقة البديلة بدأت تهدد قيمة الجائزة النفطية التي طالما موّلت الصراع نفسه. توحيد البلاد وتنويع اقتصادها صارا ضرورة وجودية معاً.',
     startIndicators: {
       satisfaction: 48, budgetBalance: -10, treasury: 6000, gdpGrowth: 1.0,
       unemployment: 24, inflation: 8, forexReserves: 50000, publicDebt: 42,
@@ -58,7 +76,8 @@ const SCENARIOS = [
       infrastructureLevel: 50, security: 55, economicDevelopment: 40,
       agricultureLevel: 42, tourismLevel: 35, industryLevel: 38, tradeBalance: -5
     },
-    startTreasuryNote: 'الاعتماد على النفط وحده لم يعد خياراً آمناً للمستقبل.'
+    startTreasuryNote: 'الاعتماد على النفط وحده لم يعد خياراً آمناً للمستقبل.',
+    sovereignty: { ...DEFAULT_SOVEREIGNTY, territoryControl: 50, rivalMilitaryStrength: 55, unifiedElectionsProgress: 8, unifiedElectionsDerailments: 3 }
   }
 ];
 

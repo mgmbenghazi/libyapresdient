@@ -374,6 +374,8 @@ canvas.spark { display: block; }
 .split-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
 @media (max-width: 860px) { .split-row { grid-template-columns: 1fr; } }
 .panel-frame { border: 1px solid var(--hairline); border-radius: 14px; background: var(--panel); padding: 16px; }
+.sovereignty-panel { margin-bottom: 14px; }
+.sovereignty-panel .rival-card { margin-bottom: 4px; }
 
 .layer-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
 .layer-toggle span { font-size: .72rem; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--hairline-soft); color: var(--text-faint); cursor: pointer; transition: color .15s ease, border-color .15s ease, background .15s ease; }
