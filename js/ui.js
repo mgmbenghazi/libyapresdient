@@ -387,6 +387,13 @@ function openRegionModal(regionId) {
   document.getElementById('modal-continue').addEventListener('click', hideModal);
 }
 
+// كل بند ميزانية الآن مبلغ مطلق بالمليون د.ل (لا نسبة من الإيراد المتقلب) - الشريط يتحرك بين 0 وثلاثة
+// أمثال خط الأساس المرجعي لهذا البند، كي يبقى مدى التحكم واسعاً بما يكفي لقرارات جذرية دون أرقام عبثية
+function budgetSliderMax(sectorKey) {
+  const base = Game.state.budget.baseline[sectorKey] || 100;
+  return Math.round(base * 3 / 10) * 10;
+}
+
 function renderBudgetTab() {
   const s = Game.state;
   const wrap = document.getElementById('budget-sliders');
@@ -394,17 +401,18 @@ function renderBudgetTab() {
   SECTORS.forEach(sec => {
     const row = document.createElement('div');
     row.className = 'slider-row';
-    const val = s.budget.allocations[sec.id];
+    const val = Math.round(s.budget.allocations[sec.id]);
+    const max = Math.max(budgetSliderMax(sec.id), val);
     row.innerHTML = `
       <label>${sec.icon} ${sec.name}</label>
-      <input type="range" min="2" max="35" value="${val}" data-sector="${sec.id}">
-      <span class="slider-val">${val}%</span>`;
+      <input type="range" min="0" max="${max}" step="10" value="${val}" data-sector="${sec.id}">
+      <span class="slider-val">${fmtNum(val, 0)} م.د.ل</span>`;
     wrap.appendChild(row);
     const input = row.querySelector('input');
     const span = row.querySelector('.slider-val');
     input.addEventListener('input', () => {
       s.budget.allocations[sec.id] = Number(input.value);
-      span.textContent = input.value + '%';
+      span.textContent = fmtNum(Number(input.value), 0) + ' م.د.ل';
       renderBudgetSummary();
     });
   });
@@ -413,13 +421,13 @@ function renderBudgetTab() {
   renderRevenueExpenditureChart();
 }
 
-function applyBudgetPreset(targetTotal) {
+// إعادة كل بند إلى نسبة من خط أساسه الثابت (1.0 = التمويل "الكافي" الافتراضي) - وليس من مجموع حالي متحرك،
+// فالنتيجة متوقعة دوماً بصرف النظر عن مقدار ما عدّله اللاعب سابقاً
+function applyBudgetPreset(multiplier) {
   const s = Game.state;
-  const keys = Object.keys(s.budget.allocations);
-  const currentTotal = keys.reduce((a, k) => a + s.budget.allocations[k], 0) || 1;
-  const scale = targetTotal / currentTotal;
-  keys.forEach(k => {
-    s.budget.allocations[k] = Math.max(2, Math.min(35, Math.round(s.budget.allocations[k] * scale)));
+  Object.keys(s.budget.allocations).forEach(k => {
+    const base = s.budget.baseline[k] || 0;
+    s.budget.allocations[k] = Math.max(0, Math.round(base * multiplier));
   });
   renderBudgetTab();
   renderSectorsTab();
@@ -429,16 +437,9 @@ function bindBudgetPresets() {
   const balanced = document.getElementById('preset-balanced');
   const austerity = document.getElementById('preset-austerity');
   const expansion = document.getElementById('preset-expansion');
-  if (balanced) balanced.onclick = () => {
-    Game.state.budget.allocations = {
-      education: 11, health: 11, security: 11, infrastructure: 11, subsidies: 11, salaries: 11, debtService: 4, economicDev: 4,
-      oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
-    };
-    renderBudgetTab();
-    renderSectorsTab();
-  };
-  if (austerity) austerity.onclick = () => applyBudgetPreset(85);
-  if (expansion) expansion.onclick = () => applyBudgetPreset(115);
+  if (balanced) balanced.onclick = () => applyBudgetPreset(1.0);
+  if (austerity) austerity.onclick = () => applyBudgetPreset(0.85);
+  if (expansion) expansion.onclick = () => applyBudgetPreset(1.15);
 }
 
 const WORLD_CYCLE_LABELS = { boom: '📈 رواج اقتصادي عالمي', normal: '🌐 استقرار عالمي نسبي', recession: '📉 ركود اقتصادي عالمي' };
@@ -454,6 +455,49 @@ function renderBudgetSummary() {
     <div>إيرادات النفط المتوقعة: <b>${fmtNum(budget.oilRevenue, 0)}</b> مليون د.ل</div>
     <div>الإيرادات الضريبية المتوقعة: <b>${fmtNum(budget.taxRevenue, 0)}</b> مليون د.ل</div>`;
   renderBudgetLiveSummary(budget);
+  renderBudgetDetailBreakdown(budget);
+}
+
+// مصادر الإيراد المعروضة فردياً بدل رقمين مجمَّعين فقط - كل تعديل (إنتاج نفط، سياحة، ضريبة...) يظهر أثره هنا مباشرة
+const REVENUE_BREAKDOWN_META = [
+  { key: 'oilRevenue', label: '🛢️ النفط والغاز' },
+  { key: 'corporateTaxRevenue', label: '🏢 ضريبة الشركات' },
+  { key: 'consumptionTaxRevenue', label: '🛒 ضريبة الاستهلاك' },
+  { key: 'customsRevenue', label: '🚢 الجمارك' },
+  { key: 'agricultureRevenue', label: '🌾 الزراعة' },
+  { key: 'tourismRevenue', label: '🏖️ السياحة' },
+  { key: 'industryRevenue', label: '🏭 الصناعة' }
+];
+
+function renderBudgetDetailBreakdown(budget) {
+  const wrap = document.getElementById('budget-detail-breakdown');
+  if (!wrap) return;
+  const revenueRows = REVENUE_BREAKDOWN_META
+    .map(m => ({ label: m.label, value: budget[m.key] || 0 }))
+    .filter(r => Math.abs(r.value) > 0.5)
+    .sort((a, b) => b.value - a.value);
+
+  const expenditureRows = SECTORS
+    .map(sec => ({ label: `${sec.icon} ${sec.name}`, value: budget.spendBySector[sec.id] || 0 }))
+    .concat(Object.keys(PRODUCTIVE_SECTOR_META).map(sid => {
+      const meta = PRODUCTIVE_SECTOR_META[sid];
+      return { label: `${meta.icon} استثمار ${meta.name}`, value: budget.spendBySector[meta.budgetKey] || 0 };
+    }))
+    .concat([{ label: '⛽ دعم أسعار المحروقات', value: budget.fuelSubsidyCost || 0 }])
+    .filter(r => Math.abs(r.value) > 0.5)
+    .sort((a, b) => b.value - a.value);
+
+  const rowHtml = r => `<div class="bd-row"><span>${r.label}</span><b>${fmtNum(r.value, 0)}</b></div>`;
+
+  wrap.innerHTML = `
+    <div class="budget-detail-col">
+      <h4>مصادر الإيراد <span class="bd-total">${fmtNum(budget.totalRevenue, 0)} م.د.ل</span></h4>
+      ${revenueRows.map(rowHtml).join('') || '<div class="hint">لا إيراد يُذكر حالياً</div>'}
+    </div>
+    <div class="budget-detail-col">
+      <h4>بنود الإنفاق <span class="bd-total">${fmtNum(budget.totalExpenditure, 0)} م.د.ل</span></h4>
+      ${expenditureRows.map(rowHtml).join('')}
+    </div>`;
 }
 
 function renderBudgetLiveSummary(budget) {
@@ -518,7 +562,8 @@ function sectorCardHtml(sectorId) {
   const s = Game.state;
   const policy = s.sectorPolicies[sectorId];
   const val = s.indicators[meta.indicatorKey];
-  const investPct = s.budget.allocations[meta.budgetKey];
+  const investAmount = Math.round(s.budget.allocations[meta.budgetKey]);
+  const investMax = Math.max(budgetSliderMax(meta.budgetKey), investAmount);
   return `
     <div class="sector-ctrl-card">
       <div class="sc-head">
@@ -528,8 +573,8 @@ function sectorCardHtml(sectorId) {
       <canvas class="sc-spark" data-spark-sector="${sectorId}" width="240" height="34"></canvas>
 
       <div class="sc-lever">
-        <div class="sc-lever-label"><span>الاستثمار</span><span class="sc-lever-val" data-invest-val="${sectorId}">${investPct}%</span></div>
-        <input type="range" class="sc-slider" data-invest-slider="${sectorId}" min="2" max="35" value="${investPct}">
+        <div class="sc-lever-label"><span>الاستثمار</span><span class="sc-lever-val" data-invest-val="${sectorId}">${fmtNum(investAmount, 0)} م.د.ل</span></div>
+        <input type="range" class="sc-slider" data-invest-slider="${sectorId}" min="0" max="${investMax}" step="10" value="${investAmount}">
       </div>
 
       <div class="sc-lever">
@@ -557,7 +602,7 @@ function bindSectorCardEvents() {
       const sectorId = input.dataset.investSlider;
       const meta = PRODUCTIVE_SECTOR_META[sectorId];
       Game.state.budget.allocations[meta.budgetKey] = Number(input.value);
-      wrap.querySelector(`[data-invest-val="${sectorId}"]`).textContent = input.value + '%';
+      wrap.querySelector(`[data-invest-val="${sectorId}"]`).textContent = fmtNum(Number(input.value), 0) + ' م.د.ل';
       renderSectorLivePreviews();
       renderBudgetSummary();
     });

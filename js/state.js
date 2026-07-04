@@ -12,7 +12,9 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 8: + سياسة الاقتصاد الكلي الدائمة (macroPolicy): معدلات الضرائب الثلاثة، دعم المحروقات، استراتيجية الدين
 // 9: + سلاسل الأزمات المجدولة (pendingFollowUps) وعدّادات المخاطرة النظامية (austerityStreak, securityNeglectStreak)
 //    + الدورة الاقتصادية العالمية (economy.worldCycle, economy.worldCycleMonthsLeft) فوق مشي سعر النفط العشوائي
-const CURRENT_SAVE_VERSION = 9;
+// 10: بنود الميزانية (budget.allocations) أصبحت مبالغ مطلقة بالمليون د.ل بدل نسب من الإيراد المتقلب،
+//     مع خط أساس ثابت budget.baseline وإيراد مرجعي budget.referenceRevenue يُحسبان عند إنشاء اللعبة
+const CURRENT_SAVE_VERSION = 10;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -24,6 +26,23 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     Object.entries(background.malus || {}).forEach(([k, v]) => indicators[k] = clampIndicator(k, (indicators[k] || 0) + v));
   }
 
+  const economy = { oilPrice: 100, worldCycle: 'normal', worldCycleMonthsLeft: 4 + Math.floor(Math.random() * 7) };
+  const sectorPolicies = {
+    oil: { ownership: 'state', orientation: 75 },
+    agriculture: { ownership: 'privatized', orientation: 30 },
+    tourism: { ownership: 'privatized', orientation: 40 },
+    industry: { ownership: 'state', orientation: 45 }
+  };
+  const macroPolicy = {
+    corporateTaxRate: 20, consumptionTaxRate: 8, customsTariffRate: 15,
+    fuelSubsidyLevel: 75, debtStrategy: 'domestic',
+    _prevFuelSubsidy: 75 // خط أساس صدمة خفض الدعم - يُهيَّأ هنا لا عند أول دورة شهرية، وإلا فات رصد أول تعديل يجريه اللاعب قبل الشهر الأول
+  };
+  // إيراد مرجعي محسوب من مؤشرات بداية السيناريو الفعلية (لا رقم عالمي ثابت) - يُستخدم فقط لاشتقاق
+  // خط أساس التمويل "الكافي" لكل بند ميزانية، ويبقى ثابتاً طوال اللعبة كي لا يتحرك الهدف مع كل تقلب إيراد لحظي
+  const referenceRevenue = estimateMonthlyRevenue({ indicators, sectorPolicies, macroPolicy, economy }).totalRevenue;
+  const baseline = computeBaselineAllocations(referenceRevenue);
+
   const state = {
     version: CURRENT_SAVE_VERSION,
     scenarioId, presidentName, backgroundId,
@@ -32,23 +51,13 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     gameOver: false, gameOverReason: null,
     indicators,
     budget: {
-      allocations: {
-        education: 11, health: 11, security: 11, infrastructure: 11, subsidies: 11, salaries: 11, debtService: 4, economicDev: 4,
-        oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
-      }
+      allocations: { ...baseline },
+      baseline,
+      referenceRevenue
     },
-    economy: { oilPrice: 100, worldCycle: 'normal', worldCycleMonthsLeft: 4 + Math.floor(Math.random() * 7) },
-    sectorPolicies: {
-      oil: { ownership: 'state', orientation: 75 },
-      agriculture: { ownership: 'privatized', orientation: 30 },
-      tourism: { ownership: 'privatized', orientation: 40 },
-      industry: { ownership: 'state', orientation: 45 }
-    },
-    macroPolicy: {
-      corporateTaxRate: 20, consumptionTaxRate: 8, customsTariffRate: 15,
-      fuelSubsidyLevel: 75, debtStrategy: 'domestic',
-      _prevFuelSubsidy: 75 // خط أساس صدمة خفض الدعم - يُهيَّأ هنا لا عند أول دورة شهرية، وإلا فات رصد أول تعديل يجريه اللاعب قبل الشهر الأول
-    },
+    economy,
+    sectorPolicies,
+    macroPolicy,
     relations: {
       tribes: TRIBES.map(t => ({ ...t })),
       parties: PARTIES.map(p => ({ ...p })),
@@ -164,6 +173,23 @@ const SAVE_MIGRATIONS = {
     if (s.economy.worldCycleMonthsLeft === undefined) s.economy.worldCycleMonthsLeft = 4 + Math.floor(Math.random() * 7);
     s.version = 9;
     return s;
+  },
+  9: function migrateV9toV10(s) {
+    // بنود الميزانية القديمة كانت نسباً مئوية من الإيراد (2-35 عادةً تجمع قرابة 100%) - نحوّلها هنا إلى مبالغ
+    // مطلقة فعلية باستخدام إيراد اللاعب الحالي (لا يعتمد على budget.allocations إطلاقاً فاستخدامه هنا آمن)،
+    // كي لا يقفز الإنفاق الفعلي فجأة عند فتح حفظ قديم
+    const revenue = estimateMonthlyRevenue(s);
+    if (s.budget && s.budget.allocations) {
+      Object.keys(s.budget.allocations).forEach(k => {
+        s.budget.allocations[k] = Math.max(0, Math.round((s.budget.allocations[k] / 100) * revenue.totalRevenue));
+      });
+    } else {
+      s.budget = { allocations: computeBaselineAllocations(revenue.totalRevenue) };
+    }
+    if (!s.budget.baseline) s.budget.baseline = computeBaselineAllocations(revenue.totalRevenue);
+    if (s.budget.referenceRevenue === undefined) s.budget.referenceRevenue = revenue.totalRevenue;
+    s.version = 10;
+    return s;
   }
 };
 
@@ -190,7 +216,8 @@ function validateStateShape(s) {
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],
-    ['pendingFollowUps'], ['engineStreaks', 'austerity'], ['economy', 'worldCycle']
+    ['pendingFollowUps'], ['engineStreaks', 'austerity'], ['economy', 'worldCycle'],
+    ['budget', 'baseline'], ['budget', 'referenceRevenue']
   ];
   for (const path of requiredPaths) {
     let cur = s;

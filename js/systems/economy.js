@@ -63,20 +63,32 @@ function estimateMonthlyRevenue(state) {
   };
 }
 
-// تقدير كامل للميزانية الشهرية: كل شريحة تمثل نسبتها المئوية مباشرة من الإيرادات المتوقعة -
-// فمجموع 100% يعني ميزانية متوازنة تماماً (إنفاق = إيراد)، وما دون ذلك فائض وما فوقه عجز.
-// هذا هو المصدر الوحيد لحساب الإنفاق، مستخدم من المعاينة الحية في الواجهة ومن الدورة الشهرية الفعلية معاً.
-// كلفة دعم الوقود تُضاف فوق بنود التخصيص - وليست جزءاً منها - لأنها سطر مستقل تماماً في السياسة الكلية
+// النسب الافتراضية الأصلية لبنود الميزانية - لا تُستخدم لحساب الإنفاق الفعلي (بات كل بند مبلغاً مطلقاً
+// بالمليون د.ل يضبطه اللاعب مباشرة ولا يتغيّر تلقائياً مع الإيراد)، بل فقط لاشتقاق خط الأساس المرجعي
+// لكل بند عند بدء اللعبة أو ترحيل حفظ قديم، ولتحديد ما يُعتبر "تمويلاً كافياً" لكل قطاع في المعادلات أدناه
+const DEFAULT_BUDGET_PCT = {
+  education: 11, health: 11, security: 11, infrastructure: 11, subsidies: 11, salaries: 11, debtService: 4, economicDev: 4,
+  oilSector: 10, agricultureSector: 6, tourismSector: 5, industrySector: 5
+};
+
+function computeBaselineAllocations(referenceRevenue) {
+  const result = {};
+  Object.entries(DEFAULT_BUDGET_PCT).forEach(([k, pct]) => { result[k] = Math.round(referenceRevenue * pct / 100); });
+  return result;
+}
+
+// تقدير كامل للميزانية الشهرية: كل بند الآن مبلغ مطلق حقيقي بالمليون د.ل يضبطه اللاعب مباشرة -
+// لا نسبة تُعاد حسابها تلقائياً كل شهر من الإيراد المتقلب، فنمو الإيراد (نفط أو غيره) يتحول فعلياً
+// إلى فائض ملموس في الخزينة ما لم يقرر اللاعب صراحة زيادة الإنفاق. كلفة دعم الوقود تبقى سطراً مستقلاً
+// تماماً فوق بنود التخصيص - وليست جزءاً منها - لأنها من السياسة الاقتصادية الكلية لا الميزانية العامة
 function estimateBudget(state) {
   const revenue = estimateMonthlyRevenue(state);
   const alloc = state.budget.allocations;
-  const totalAllocPct = Object.values(alloc).reduce((a, b) => a + b, 0);
-  const spendBySector = {};
-  Object.keys(alloc).forEach(key => {
-    spendBySector[key] = revenue.totalRevenue * (alloc[key] / 100);
-  });
+  const spendBySector = { ...alloc };
   const allocExpenditure = Object.values(spendBySector).reduce((a, b) => a + b, 0);
   const totalExpenditure = allocExpenditure + revenue.fuelSubsidyCost;
+  // نسبة الإنفاق الإجمالي (بما فيه دعم الوقود) من الإيراد الفعلي - مؤشر معلوماتي لحالة التوازن المالي، لا مُدخلاً في الحساب
+  const totalAllocPct = revenue.totalRevenue > 0 ? (totalExpenditure / revenue.totalRevenue) * 100 : 100;
   return { ...revenue, totalAllocPct, spendBySector, allocExpenditure, totalExpenditure, balance: revenue.totalRevenue - totalExpenditure };
 }
 
@@ -110,8 +122,8 @@ function monthlyEconomicTick(state) {
   eco.oilPrice = Math.max(30, Math.min(200, eco.oilPrice + rnd(cycle.driftMin, cycle.driftMax)));
   const oilPriceFactor = eco.oilPrice / 100;
 
-  // 2+3+4) الإيرادات والإنفاق - كل شريحة ميزانية تُحسب كنسبة مباشرة من الإيرادات الفعلية،
-  // بحيث يعكس تعديل الأشرطة فعلياً حجم الإنفاق الكلي (لا مجرد إعادة توزيع لمجموع ثابت)
+  // 2+3+4) الإيرادات والإنفاق - كل بند ميزانية الآن مبلغ مطلق ثابت لا يتغيّر تلقائياً مع الإيراد،
+  // فنمو الإيراد (نفط أو غيره) يتحول فعلياً إلى فائض حقيقي في الخزينة ما لم يزد اللاعب الإنفاق صراحة
   const budget = estimateBudget(state);
   const { oilRevenue, taxRevenue, agricultureRevenue, tourismRevenue, industryRevenue, sectorRevenue, fuelSubsidyCost, totalRevenue, totalExpenditure } = budget;
   const macro = state.macroPolicy;
@@ -120,11 +132,14 @@ function monthlyEconomicTick(state) {
   ind.treasury += monthlyBalance;
   ind.budgetBalance = clampIndicator('budgetBalance', (monthlyBalance / Math.max(totalRevenue, 1)) * 100);
 
-  // 5) تأثير مستوى تمويل كل قطاع على مؤشراته (مقارنة بحصة متوازنة - تُحسب ديناميكياً حسب عدد بنود الميزانية الفعلي)
-  const fairShare = 100 / Object.keys(alloc).length;
+  // 5) تأثير مستوى تمويل كل قطاع على مؤشراته - يُقارَن المبلغ المطلق المخصَّص بخط أساس ثابت محسوب عند بداية اللعبة
+  // (state.budget.baseline)، لا بنسبة من الإيراد المتقلب، فتظل معايرة "هل هذا القطاع ممول بما يكفي؟" مستقرة
+  // بصرف النظر عن حجم الإيراد اللحظي
+  const baseline = state.budget.baseline || computeBaselineAllocations(state.budget.referenceRevenue || totalRevenue);
   function sectorFundingEffect(sectorKey, indicatorKey, weight, growthMult) {
-    const pct = alloc[sectorKey];
-    const delta = (pct - fairShare) / fairShare; // -1..+
+    const amount = alloc[sectorKey];
+    const base = baseline[sectorKey] || 1;
+    const delta = (amount - base) / base; // -1..+ (يمكن تجاوز +1 إن ضاعف اللاعب التمويل عدة مرات)
     ind[indicatorKey] = clampIndicator(indicatorKey, ind[indicatorKey] + delta * weight * (growthMult === undefined ? 1 : growthMult));
   }
   sectorFundingEffect('education', 'educationLevel', 0.6);
@@ -151,16 +166,16 @@ function monthlyEconomicTick(state) {
   if (sp.oil.ownership === 'privatized') ind.satisfaction = clampIndicator('satisfaction', ind.satisfaction - 0.08);
   if (sp.oil.ownership === 'partnership') ind.internationalSupport = clampIndicator('internationalSupport', ind.internationalSupport + 0.05);
 
-  // نقص شديد في التمويل الأساسي يضر برضا الشعب
+  // نقص شديد في التمويل الأساسي يضر برضا الشعب - يُقاس الآن كنسبة من خط الأساس بدل عتبة مئوية مطلقة قديمة
   ['education', 'health', 'security', 'infrastructure', 'subsidies'].forEach(key => {
-    if (alloc[key] < 6) ind.satisfaction = clampIndicator('satisfaction', ind.satisfaction - 0.3);
+    if (alloc[key] < baseline[key] * 0.55) ind.satisfaction = clampIndicator('satisfaction', ind.satisfaction - 0.3);
   });
 
   // 6) البطالة والتضخم والنمو - الدورة الاقتصادية العالمية تنحاز النمو صعوداً في الرواج وهبوطاً في الركود
   const growthDrift = (ind.economicDevelopment - 50) / 400 + (oilPriceFactor - 1) * 0.3 + cycle.growthBonus;
   ind.gdpGrowth = clampIndicator('gdpGrowth', ind.gdpGrowth * 0.9 + growthDrift + rnd(-0.3, 0.3));
   ind.unemployment = clampIndicator('unemployment', ind.unemployment - ind.gdpGrowth * 0.15 + rnd(-0.2, 0.2));
-  const subsidyPressure = (fairShare - alloc.subsidies) / fairShare;
+  const subsidyPressure = (baseline.subsidies - alloc.subsidies) / baseline.subsidies;
   ind.inflation = clampIndicator('inflation', ind.inflation + (monthlyBalance < 0 ? 0.15 : -0.05) + subsidyPressure * 0.1 + rnd(-0.2, 0.2));
 
   // 6ب) آثار جانبية لمعدلات الضرائب الثلاثة تتجاوز الإيراد المباشر - معدل 20/8/15% هو الحياد المرجعي

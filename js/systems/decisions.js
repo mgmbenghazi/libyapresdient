@@ -76,8 +76,12 @@ function applyDecisionOption(state, decision, optionIndex) {
       if (eff.ownership) policy.ownership = eff.ownership;
       if (eff.orientationDelta !== undefined) policy.orientation = Math.max(0, Math.min(100, policy.orientation + eff.orientationDelta));
       if (eff.investDelta !== undefined) {
+        // investDelta نسبة مئوية من خط الأساس الثابت لهذا البند (لا نقاط مئوية مباشرة على مقياس نسبي قديم) -
+        // تُترجم هنا إلى مبلغ مطلق بالمليون د.ل يُضاف لتخصيص القطاع الفعلي
         const budgetKey = PRODUCTIVE_SECTOR_META[eff.sector].budgetKey;
-        state.budget.allocations[budgetKey] = Math.max(2, Math.min(35, state.budget.allocations[budgetKey] + eff.investDelta));
+        const base = (state.budget.baseline && state.budget.baseline[budgetKey]) || state.budget.allocations[budgetKey] || 1;
+        const amountDelta = base * eff.investDelta / 100;
+        state.budget.allocations[budgetKey] = Math.max(0, state.budget.allocations[budgetKey] + amountDelta);
       }
     }
   }

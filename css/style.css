@@ -370,6 +370,16 @@ canvas.spark { display: block; }
 .blc-tag.medium { background: rgba(224,167,43,.15); color: var(--medium); }
 .blc-tag.bad { background: rgba(229,72,77,.15); color: var(--bad); }
 
+.budget-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.budget-detail-col { background: var(--panel); border-radius: var(--radius); padding: 14px 16px; }
+.budget-detail-col h4 { display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; color: var(--gold); margin: 0 0 10px; border-bottom: 1px solid var(--hairline-soft); padding-bottom: 8px; }
+.budget-detail-col .bd-total { font-size: .8rem; color: var(--text-dim); font-weight: 400; }
+.bd-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: .84rem; color: var(--text-dim); }
+.bd-row b { color: var(--text); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .budget-detail-grid { grid-template-columns: 1fr; }
+}
+
 .chart-legend { display: flex; align-items: center; font-size: .78rem; color: var(--text-dim); margin-bottom: 6px; }
 .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 5px; }
 
