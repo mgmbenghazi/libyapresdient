@@ -17,7 +17,9 @@ const SAVE_KEY = 'rayyes_libya_save';
 // 11: + رأس المال السياسي (politicalCapital) ولوحة الإجراءات الرئاسية الاستباقية (actionCooldowns, actionsLog)
 //     + المسار الدستوري اللارجعة (constitution) + المؤامرات (schemes) + منافس انتخابي حي (rival)
 // 12: + معدِّلات التحدي الاختيارية النشطة لهذه اللعبة (activeChallenges) - جزء من إرث الرئاسة الدائم
-const CURRENT_SAVE_VERSION = 12;
+// 13: + السياسة النقدية الدائمة (monetaryPolicy): سعر الفائدة الأساسي ونظام سعر الصرف، وخيار "طباعة نقدية"
+//     ضمن استراتيجية تمويل العجز + عدّاد أزمة نفاد احتياطي (fxReserveCrisis) ضمن engineStreaks
+const CURRENT_SAVE_VERSION = 13;
 
 function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices, challengeIds) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
@@ -41,6 +43,10 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     fuelSubsidyLevel: 75, debtStrategy: 'domestic',
     _prevFuelSubsidy: 75 // خط أساس صدمة خفض الدعم - يُهيَّأ هنا لا عند أول دورة شهرية، وإلا فات رصد أول تعديل يجريه اللاعب قبل الشهر الأول
   };
+  const monetaryPolicy = {
+    interestRate: 5, // % - الحياد المرجعي؛ رفعه يكبح التضخم ويبطئ النمو قليلاً، خفضه عكس ذلك
+    exchangeRegime: 'managed' // 'fixed' (تثبيت) | 'managed' (تعويم مُدار) | 'float' (تعويم حر)
+  };
   // إيراد مرجعي محسوب من مؤشرات بداية السيناريو الفعلية (لا رقم عالمي ثابت) - يُستخدم فقط لاشتقاق
   // خط أساس التمويل "الكافي" لكل بند ميزانية، ويبقى ثابتاً طوال اللعبة كي لا يتحرك الهدف مع كل تقلب إيراد لحظي
   const referenceRevenue = estimateMonthlyRevenue({ indicators, sectorPolicies, macroPolicy, economy }).totalRevenue;
@@ -61,6 +67,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     economy,
     sectorPolicies,
     macroPolicy,
+    monetaryPolicy,
     relations: {
       tribes: TRIBES.map(t => ({ ...t })),
       parties: PARTIES.map(p => ({ ...p })),
@@ -74,7 +81,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     eventCooldowns: {}, // id -> month usable again
     relationsCooldowns: {}, // "kind:id" -> month usable again لإجراء "تواصل" المباشر
     pendingFollowUps: [], // {id, kind:'decision'|'event', dueMonth} - سلاسل أزمات مجدولة من قرارات/أحداث سابقة
-    engineStreaks: { austerity: 0, securityNeglect: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
+    engineStreaks: { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0 }, // عدّادات أشهر متتالية تغذّي سلاسل الأزمات
     politicalCapital: 50, // مورد يُنفَق على الإجراءات الرئاسية الاستباقية (ACTIONS في data/actions.js)
     actionCooldowns: {}, // actionId -> month usable again
     actionsLog: [],
@@ -219,6 +226,15 @@ const SAVE_MIGRATIONS = {
     if (!Array.isArray(s.activeChallenges)) s.activeChallenges = [];
     s.version = 12;
     return s;
+  },
+  12: function migrateV12toV13(s) {
+    if (!s.monetaryPolicy || typeof s.monetaryPolicy !== 'object') {
+      s.monetaryPolicy = { interestRate: 5, exchangeRegime: 'managed' };
+    }
+    if (!s.engineStreaks || typeof s.engineStreaks !== 'object') s.engineStreaks = { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0 };
+    if (s.engineStreaks.fxReserveCrisis === undefined) s.engineStreaks.fxReserveCrisis = 0;
+    s.version = 13;
+    return s;
   }
 };
 
@@ -241,7 +257,7 @@ function validateStateShape(s) {
   const requiredPaths = [
     ['presidentName'], ['month'], ['year'],
     ['indicators', 'satisfaction'], ['indicators', 'treasury'],
-    ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'], ['macroPolicy', 'fuelSubsidyLevel'],
+    ['budget', 'allocations'], ['economy', 'oilPrice'], ['sectorPolicies', 'oil'], ['macroPolicy', 'fuelSubsidyLevel'], ['monetaryPolicy', 'interestRate'],
     ['relations', 'tribes'], ['relations', 'countries'],
     ['characters'], ['cabinet'], ['characterRelations'], ['missions'],
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],

@@ -76,6 +76,19 @@ const ACTIONS = [
     execute(state) {
       return revealActiveScheme(state);
     }
+  },
+  {
+    id: 'fx_intervention', name: 'تدخل مباشر في سوق الصرف', icon: '💱', cost: 25, cooldown: 4,
+    description: 'يبيع المصرف المركزي جزءاً من احتياطي النقد الأجنبي مباشرة في السوق لدعم العملة المحلية وكبح التضخم فوراً - أداة سريعة لكنها تستهلك مورداً محدوداً.',
+    condition: s => s.indicators.forexReserves > 1000,
+    execute(state) {
+      const reservesSpent = Math.min(state.indicators.forexReserves, 4000);
+      state.indicators.forexReserves = Math.max(0, state.indicators.forexReserves - reservesSpent);
+      const inflationCut = (reservesSpent / 4000) * 3;
+      state.indicators.inflation = clampIndicator('inflation', state.indicators.inflation - inflationCut);
+      state.indicators.politicalStability = clampIndicator('politicalStability', state.indicators.politicalStability + 1);
+      return { message: `أنفق المصرف المركزي ${Math.round(reservesSpent)} مليون د.ل من الاحتياطي لدعم العملة، فتراجع التضخم فوراً بمقدار ${inflationCut.toFixed(1)} نقطة.` };
+    }
   }
 ];
 

@@ -864,7 +864,8 @@ function renderFuelSubsidyPanel() {
 const DEBT_STRATEGY_META = [
   { id: 'domestic', name: 'اقتراض داخلي', desc: 'تضخم أعلى قليلاً، بلا تبعية خارجية' },
   { id: 'external', name: 'تمويل خارجي', desc: 'دين أسرع نمواً لكنه يدعم الاحتياطي ويقرّب من صندوق النقد' },
-  { id: 'austerity', name: 'تقشف فوري', desc: 'يؤلم الرضا الشعبي لكن يبقي الدين منضبطاً' }
+  { id: 'austerity', name: 'تقشف فوري', desc: 'يؤلم الرضا الشعبي لكن يبقي الدين منضبطاً' },
+  { id: 'printing', name: 'طباعة نقدية', desc: 'يتجنب أي دين جديد كلياً لكنه تضخمي بشدة ويستنزف الاحتياطي' }
 ];
 
 function renderDebtStrategyPanel() {
@@ -884,10 +885,53 @@ function renderDebtStrategyPanel() {
   });
 }
 
+const EXCHANGE_REGIME_META = [
+  { id: 'fixed', name: 'تثبيت', desc: 'يكبح التضخم المستورد لكنه يستنزف الاحتياطي شهرياً للدفاع عن العملة - خطر أزمة عملة إن نفد' },
+  { id: 'managed', name: 'تعويم مُدار', desc: 'توازن معتدل بين الاستقرار واستهلاك الاحتياطي - الوضع الافتراضي' },
+  { id: 'float', name: 'تعويم حر', desc: 'يمتص صدمات ميزان التجارة مباشرة في الاحتياطي دون دفاع اصطناعي، لكنه يضخّم التضخم عند الضغط' }
+];
+
+// ------- السياسة النقدية: سعر الفائدة الأساسي ونظام سعر الصرف - أداتان حقيقيتان تتحكمان بالتضخم والاحتياطي مباشرة -------
+function renderInterestRatePanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('interest-rate-panel');
+  if (!wrap) return;
+  const rate = s.monetaryPolicy.interestRate;
+  wrap.innerHTML = `
+    <div class="dial-head"><span class="dial-name">سعر الفائدة الأساسي (5% = حياد مرجعي)</span><span class="dial-val" id="interest-rate-val">${rate}%</span></div>
+    <input type="range" class="sc-slider" id="interest-rate-slider" min="0" max="20" step="0.5" value="${rate}">
+    <div class="dial-side-effect">رفعه يكبح التضخم ويجذب احتياطياً أجنبياً باحثاً عن عائد لكنه يبطئ النمو ويرفع كلفة خدمة الدين، وخفضه عكس ذلك تماماً.</div>`;
+  const slider = document.getElementById('interest-rate-slider');
+  slider.addEventListener('input', () => {
+    const val = Number(slider.value);
+    Game.state.monetaryPolicy.interestRate = val;
+    document.getElementById('interest-rate-val').textContent = val + '%';
+  });
+}
+
+function renderExchangeRegimePanel() {
+  const s = Game.state;
+  const wrap = document.getElementById('exchange-regime-panel');
+  if (!wrap) return;
+  wrap.innerHTML = EXCHANGE_REGIME_META.map(r => `
+    <button type="button" class="seg-btn debt-seg-btn ${s.monetaryPolicy.exchangeRegime === r.id ? 'active' : ''}" data-regime="${r.id}">
+      <span class="debt-seg-name">${r.name}</span><span class="debt-seg-desc">${r.desc}</span>
+    </button>`).join('');
+  wrap.querySelectorAll('.debt-seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Game.state.monetaryPolicy.exchangeRegime = btn.dataset.regime;
+      wrap.querySelectorAll('.debt-seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
 function renderMacroTab() {
   renderMacroTaxCards();
   renderFuelSubsidyPanel();
   renderDebtStrategyPanel();
+  renderInterestRatePanel();
+  renderExchangeRegimePanel();
 }
 
 function bindEconomySubTabs() {

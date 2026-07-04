@@ -178,6 +178,41 @@ function monthlyEconomicTick(state) {
   const subsidyPressure = (baseline.subsidies - alloc.subsidies) / baseline.subsidies;
   ind.inflation = clampIndicator('inflation', ind.inflation + (monthlyBalance < 0 ? 0.15 : -0.05) + subsidyPressure * 0.1 + rnd(-0.2, 0.2));
 
+  // 6أ) السياسة النقدية: سعر الفائدة الأساسي ونظام سعر الصرف - أداتان حقيقيتان يتحكم بهما اللاعب مباشرة
+  // في التضخم والاحتياطي الأجنبي، بدل انجرافهما التلقائي البحت وفق العجز والدعم فقط
+  const monetary = state.monetaryPolicy || { interestRate: 5, exchangeRegime: 'managed' };
+  const rateDeviation = monetary.interestRate - 5; // 5% هو الحياد المرجعي
+  ind.inflation = clampIndicator('inflation', ind.inflation - rateDeviation * 0.1);
+  ind.gdpGrowth = clampIndicator('gdpGrowth', ind.gdpGrowth - rateDeviation * 0.02);
+  ind.economicDevelopment = clampIndicator('economicDevelopment', ind.economicDevelopment - rateDeviation * 0.03);
+  // فائدة أعلى تجذب رؤوس أموال قصيرة الأجل تبحث عن عائد (تدفق ساخن)، وأدنى تطرد جزءاً منها
+  ind.forexReserves = Math.max(0, ind.forexReserves + rateDeviation * 180);
+  // كلفة خدمة الدين الفعلية: فائدة أعلى تُثقل خزينة أي دولة مديونة، بصرف النظر عن استراتيجية تمويل العجز المختارة
+  const debtServiceCost = (monetary.interestRate / 100) * ind.publicDebt * 9;
+  ind.treasury -= debtServiceCost;
+
+  if (monetary.exchangeRegime === 'fixed') {
+    // تثبيت سعر الصرف: يكبح التضخم المستورد لكن يستنزف الاحتياطي شهرياً للدفاع عن العملة
+    ind.inflation = clampIndicator('inflation', ind.inflation - 0.25);
+    const peggingCost = 300 + Math.max(0, ind.inflation - 5) * 120;
+    ind.forexReserves = Math.max(0, ind.forexReserves - peggingCost);
+  } else if (monetary.exchangeRegime === 'float') {
+    // تعويم حر: يمتص صدمات ميزان التجارة مباشرة في الاحتياطي بدل الدفاع الاصطناعي، لكنه يضخّم التضخم عند الضغط
+    ind.forexReserves = Math.max(0, ind.forexReserves + ind.tradeBalance * 45);
+    ind.inflation = clampIndicator('inflation', ind.inflation + Math.max(0, -ind.tradeBalance) * 0.05);
+  }
+
+  // نفاد الاحتياطي تحت نظام التثبيت تحديداً هو أزمة عملة كلاسيكية - عدّاد أشهر متتالية دون احتياطٍ كافٍ للدفاع
+  if (!state.engineStreaks) state.engineStreaks = { austerity: 0, securityNeglect: 0, fxReserveCrisis: 0 };
+  if (monetary.exchangeRegime === 'fixed' && ind.forexReserves < 8000) {
+    state.engineStreaks.fxReserveCrisis = (state.engineStreaks.fxReserveCrisis || 0) + 1;
+  } else {
+    state.engineStreaks.fxReserveCrisis = 0;
+  }
+  if (state.engineStreaks.fxReserveCrisis === 3) {
+    scheduleFollowUp(state, { id: 'currency_devaluation_crisis', kind: 'event', monthsFromNow: 1 });
+  }
+
   // 6ب) آثار جانبية لمعدلات الضرائب الثلاثة تتجاوز الإيراد المباشر - معدل 20/8/15% هو الحياد المرجعي
   const corporateTaxDrag = (macro.corporateTaxRate - 20) / 100;
   ind.economicDevelopment = clampIndicator('economicDevelopment', ind.economicDevelopment - corporateTaxDrag * 0.3);
@@ -215,6 +250,10 @@ function monthlyEconomicTick(state) {
     } else if (macro.debtStrategy === 'austerity') {
       ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + deficitRatio * 0.8);
       austerityPenalty = deficitRatio * 3;
+    } else if (macro.debtStrategy === 'printing') {
+      // طباعة نقدية لتمويل العجز: يتجنب أي دين جديد كلياً، لكنه تضخمي بشدة ويضعف ثقة السوق بالعملة مباشرة
+      ind.inflation = clampIndicator('inflation', ind.inflation + deficitRatio * 4);
+      ind.forexReserves = Math.max(0, ind.forexReserves - deficitRatio * 250);
     } else {
       ind.publicDebt = clampIndicator('publicDebt', ind.publicDebt + deficitRatio * 2.2);
       ind.inflation = clampIndicator('inflation', ind.inflation + deficitRatio * 1.5);
@@ -304,6 +343,20 @@ function monthlyEconomicTick(state) {
   }
   if (eco.worldCycle !== 'normal') {
     attributions.push({ label: `الاقتصاد العالمي في مرحلة "${cycle.label}" تنعكس على النمو وسعر النفط`, impact: 35 });
+  }
+  if (monetary.exchangeRegime === 'fixed' && state.engineStreaks.fxReserveCrisis >= 2) {
+    attributions.push({ label: 'الدفاع عن سعر الصرف المثبَّت يستنزف الاحتياطي الأجنبي بسرعة', impact: 45 });
+  }
+  if (macro.debtStrategy === 'printing' && monthlyBalance < 0) {
+    attributions.push({ label: 'تمويل العجز بالطباعة النقدية غذّى التضخم بقوة هذا الشهر', impact: 50 });
+  }
+  if (Math.abs(rateDeviation) >= 3) {
+    attributions.push({
+      label: rateDeviation > 0
+        ? `رفع سعر الفائدة إلى ${monetary.interestRate}% كبح التضخم لكنه أبطأ النمو`
+        : `خفض سعر الفائدة إلى ${monetary.interestRate}% حفّز النمو لكنه غذّى التضخم`,
+      impact: Math.abs(rateDeviation) * 8
+    });
   }
   if (fuelShockMagnitude > 0) {
     attributions.push({ label: 'صدمة خفض دعم الوقود المفاجئ ضربت الرضا والاستقرار السياسي', impact: fuelShockMagnitude * 40 });

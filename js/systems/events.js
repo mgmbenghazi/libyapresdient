@@ -104,6 +104,11 @@ function applyEventOption(state, event, optionIndex) {
     state.schemes = [];
   }
 
+  // تحوّل قسري لنظام سعر الصرف - يُستخدم عند التخلي عن التثبيت أثناء أزمة عملة بدل تركه مثبَّتاً رغم فشله الظاهر
+  if (option.setExchangeRegime && state.monetaryPolicy) {
+    state.monetaryPolicy.exchangeRegime = option.setExchangeRegime;
+  }
+
   state.eventCooldowns[event.id] = state.month + (event.cooldown || DEFAULT_EVENT_COOLDOWN);
   state.eventsLog.push({ month: state.month, year: state.year, eventId: event.id, title: event.title, optionLabel: option.label });
 }

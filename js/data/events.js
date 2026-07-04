@@ -321,6 +321,18 @@ const EVENTS = [
     ]
   },
   {
+    id: 'currency_devaluation_crisis', severity: 'crisis', category: 'economic', title: 'أزمة عملة: نفاد الاحتياطي الأجنبي',
+    description: 'استنزف الدفاع المتواصل عن سعر الصرف المثبَّت الاحتياطي الأجنبي إلى مستوى حرج، وبدأت تظهر علامات هلع في السوق الموازية مع تسارع المضاربة ضد العملة المحلية.',
+    condition: s => s.monetaryPolicy && s.monetaryPolicy.exchangeRegime === 'fixed',
+    weight: 5, cooldown: 14,
+    options: [
+      { label: 'التخلي فوراً عن التثبيت والانتقال لتعويم مُدار', advisor: 'محافظ المصرف المركزي: قرار مؤلم لكنه يوقف النزيف قبل انهيار كامل للعملة.',
+        immediate: { inflation: 6, satisfaction: -4, forexReserves: 1500 }, setExchangeRegime: 'managed' },
+      { label: 'الاستمرار في التثبيت باقتراض طارئ من صندوق النقد', immediate: { publicDebt: 5, internationalSupport: 2, forexReserves: 3000 } },
+      { label: 'تجاهل الأزمة والمراهنة على تعافي الاحتياطي تلقائياً', immediate: { forexReserves: -2000, satisfaction: -2, politicalStability: -2 } }
+    ]
+  },
+  {
     id: 'coup_attempt', severity: 'crisis', category: 'political', title: 'محاولة انقلاب عسكري',
     description: 'في ظل تصاعد المخاطرة النظامية على عدة جبهات معاً، تحركت وحدة عسكرية لمحاولة الاستيلاء على مقار سيادية، في أخطر اختبار يواجه حكمك حتى الآن.',
     condition: s => computeSystemicRisk(s) > 55,
