@@ -15,6 +15,50 @@ function fmtNum(n, decimals) {
   return Number(n).toLocaleString('ar-LY', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 }
 
+// ------- إرث الرئاسة: ملخص في شاشة البداية + سجل الحكام الكامل -------
+function renderLegacySummary() {
+  const wrap = document.getElementById('legacy-summary');
+  if (!wrap) return;
+  const stats = getLegacyStats();
+  if (stats.gamesPlayed === 0) {
+    wrap.innerHTML = '<p class="legacy-hint">لم تُسجَّل أي حكومة بعد - أول لعبة تُكمِلها تبدأ إرثك الرئاسي.</p>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="legacy-stat"><b>${stats.gamesPlayed}</b><span>حكومة سابقة</span></div>
+    <div class="legacy-stat"><b>${stats.bestScore}</b><span>أفضل نتيجة</span></div>
+    <div class="legacy-stat"><b>${stats.longestSurvival}</b><span>أطول مدة (شهر)</span></div>`;
+}
+
+function renderHallOfLeadersModal() {
+  const stats = getLegacyStats();
+  const rows = stats.records.slice().reverse().slice(0, 30).map(r => {
+    const reasonLabel = { completed: 'أكمل المدة', overthrow: 'أُطيح به', bankruptcy: 'إفلاس', occupation: 'فقدان السيادة' }[r.reason] || r.reason;
+    return `<div class="hall-row"><span class="hall-name">${r.presidentName}</span><span class="hall-months">${r.months} شهراً</span><span class="hall-reason">${reasonLabel}</span><span class="hall-score">${r.score}</span></div>`;
+  }).join('');
+  const html = `
+    <span class="modal-tag">🏛 سجل الحكام</span>
+    <h2>إرث الرئاسة</h2>
+    ${stats.gamesPlayed === 0 ? '<p class="hint">لا يوجد سجل بعد.</p>' : `
+    <div class="hall-summary">
+      <div class="legacy-stat"><b>${stats.gamesPlayed}</b><span>حكومة</span></div>
+      <div class="legacy-stat"><b>${stats.bestScore}</b><span>أفضل نتيجة</span></div>
+      <div class="legacy-stat"><b>${stats.avgScore}</b><span>المتوسط</span></div>
+      <div class="legacy-stat"><b>${stats.longestSurvival}</b><span>أطول مدة</span></div>
+    </div>
+    <div class="hall-list">
+      <div class="hall-row hall-head"><span>الرئيس</span><span>المدة</span><span>سبب الانتهاء</span><span>النتيجة</span></div>
+      ${rows}
+    </div>
+    <h4 style="margin-top:16px">الإنجازات الدائمة (${stats.unlockedAchievements.length} / ${ACHIEVEMENTS.length})</h4>
+    <div class="achievements-row">
+      ${ACHIEVEMENTS.map(a => `<span class="achievement-badge ${stats.unlockedAchievements.includes(a.id) ? '' : 'locked'}" title="${a.desc}">🏆 ${a.name}</span>`).join('')}
+    </div>`}
+    <div class="nav-row"><button class="btn btn-primary" id="modal-continue">إغلاق</button></div>`;
+  showModal(html);
+  document.getElementById('modal-continue').addEventListener('click', hideModal);
+}
+
 function renderScenarioList() {
   const wrap = document.getElementById('scenario-list');
   wrap.innerHTML = '';
@@ -29,6 +73,7 @@ function renderScenarioList() {
       Game.selectedScenario = sc.id;
       showScreen('screen-character');
       renderBackgroundList();
+      renderChallengeList();
     });
     wrap.appendChild(card);
   });
@@ -47,6 +92,40 @@ function renderBackgroundList() {
       Game.selectedBackground = b.id;
     });
     wrap.appendChild(card);
+  });
+}
+
+// معدِّلات تحدٍ اختيارية تُفتح تدريجياً مع تراكم إرث الرئاسة - تحديد أي منها فعّال يُبنى في Game.selectedChallenges
+function renderChallengeList() {
+  const wrap = document.getElementById('challenge-list');
+  if (!wrap) return;
+  Game.selectedChallenges = Game.selectedChallenges || [];
+  const unlocked = getUnlockedChallenges();
+  const stats = getLegacyStats();
+  if (!unlocked.length) {
+    wrap.innerHTML = `<p class="hint">أكمل حكومتك الأولى لتُفتح أول معدِّلات التحدي.</p>`;
+    return;
+  }
+  wrap.innerHTML = unlocked.map(c => `
+    <div class="challenge-chip" data-challenge-id="${c.id}">
+      <div class="cc-head"><span>${c.icon} ${c.name}</span></div>
+      <p class="cc-desc">${c.desc}</p>
+    </div>`).join('');
+  const locked = CHALLENGE_MODIFIERS.filter(c => stats.gamesPlayed < c.unlockAtGames);
+  if (locked.length) {
+    wrap.innerHTML += locked.map(c => `
+      <div class="challenge-chip locked">
+        <div class="cc-head"><span>🔒 ${c.name}</span></div>
+        <p class="cc-desc">يُفتح بعد إكمال ${c.unlockAtGames} حكومة (لديك ${stats.gamesPlayed} حالياً).</p>
+      </div>`).join('');
+  }
+  wrap.querySelectorAll('.challenge-chip:not(.locked)').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const id = chip.dataset.challengeId;
+      const idx = Game.selectedChallenges.indexOf(id);
+      if (idx >= 0) { Game.selectedChallenges.splice(idx, 1); chip.classList.remove('selected'); }
+      else { Game.selectedChallenges.push(id); chip.classList.add('selected'); }
+    });
   });
 }
 
@@ -111,6 +190,34 @@ function renderCommandBar() {
 
   const capitalBadgeEl = document.getElementById('cmd-capital-badge');
   capitalBadgeEl.textContent = `🏛 رأس المال السياسي: ${Math.round(s.politicalCapital)}`;
+}
+
+// ------- شائعات القصر: ترقّب لمؤامرة نشطة غير مكتشفة + عدّاد الاستحقاق الانتخابي القادم -------
+const RUMOR_TEXTS = {
+  coup: 'شائعات متضاربة تتحدث عن تحركات غير معتادة داخل صفوف القوات الأمنية...',
+  defect: 'يتردد أن أحد كبار المقربين منك يعقد لقاءات سرية مع أطراف معارضة...',
+  smear: 'مصادر إعلامية تلمّح إلى مستندات "حساسة" قد تُنشر قريباً بشأنك شخصياً...'
+};
+
+function renderRumorBanner() {
+  const s = Game.state;
+  const wrap = document.getElementById('rumor-banner');
+  if (!wrap) return;
+  const activeScheme = (s.schemes || [])[0];
+  const electionDecision = DECISIONS.find(d => d.id === 'election_call');
+  const electionPending = electionDecision && !s.decisionsUsed.includes('election_call') && s.month < electionDecision.forcedByMonth;
+
+  const parts = [];
+  if (activeScheme && !activeScheme.discovered) {
+    parts.push(`🕯️ ${RUMOR_TEXTS[activeScheme.kind] || 'شائعات غامضة تسري في أروقة الحكم...'}`);
+  }
+  if (electionPending) {
+    const monthsLeft = electionDecision.forcedByMonth - s.month;
+    parts.push(`🗳️ الاستحقاق الانتخابي القادم خلال ${monthsLeft} شهراً - شعبيتك اليوم قد تحدد مصيره.`);
+  }
+  if (!parts.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  wrap.innerHTML = parts.map(p => `<div class="rumor-line">${p}</div>`).join('');
 }
 
 // ------- شريط "يتطلب انتباهك الآن" -------
@@ -967,6 +1074,7 @@ function renderLogTab() {
 function renderGameScreen() {
   renderHUD();
   renderCommandBar();
+  renderRumorBanner();
   renderAttentionStrip();
   renderDomainGrid();
   renderLibyaMap();
@@ -1077,7 +1185,9 @@ function renderElectionResultModal(result, onClose) {
     <p class="modal-desc">${body}</p>
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
   const dismiss = () => { hideModal(); onClose(); };
-  showModal(html, { crisis: !result.won || result.caught, onDismiss: dismiss });
+  const cleanWin = result.won && !result.caught;
+  if (cleanWin) playMilestone();
+  showModal(html, { crisis: !cleanWin, celebrate: cleanWin, onDismiss: dismiss });
   document.getElementById('modal-continue').addEventListener('click', dismiss);
 }
 
@@ -1308,11 +1418,25 @@ function openAssignModal(ministryId, preselectedCharId) {
   });
 }
 
-function renderEndScreen(result) {
+function renderEndScreen(result, legacyComparison) {
   const s = Game.state;
   document.getElementById('end-title').textContent = getTitle(s, result.reason);
   document.getElementById('end-reason').textContent = result.title;
+  document.getElementById('end-epilogue').textContent = buildEpilogue(s, result.reason);
+  animateNumber(document.getElementById('end-score-num'), 0, computeFinalScore(s), 1400);
   if (result.reason === 'completed' && computeFinalScore(s) >= 50) playGameOverGood(); else playGameOverBad();
+
+  const legacyWrap = document.getElementById('end-legacy-compare');
+  if (legacyWrap && legacyComparison) {
+    if (legacyComparison.gamesPlayedBefore === 0) {
+      legacyWrap.innerHTML = `<div class="legacy-compare-card">🏛 هذه أول حكومة تُسجَّل في إرثك الرئاسي - كل لعبة قادمة ستُقارَن بها.</div>`;
+    } else if (legacyComparison.isNewBest) {
+      legacyWrap.innerHTML = `<div class="legacy-compare-card new-best">🏆 رقم قياسي جديد! هذه أفضل نتيجة تحققها عبر ${legacyComparison.gamesPlayedBefore} حكومة سابقة (السابق: ${legacyComparison.bestPriorScore}).</div>`;
+    } else {
+      legacyWrap.innerHTML = `<div class="legacy-compare-card">📊 هذه النتيجة أفضل من ${legacyComparison.percentile}% من حكوماتك السابقة (${legacyComparison.gamesPlayedBefore} حكومة). أفضل نتيجة سابقة: ${legacyComparison.bestPriorScore}.</div>`;
+    }
+  }
+
   const indWrap = document.getElementById('end-indicators');
   indWrap.innerHTML = '';
   ['satisfaction', 'politicalStability', 'internationalSupport', 'economicDevelopment', 'security', 'poverty', 'unemployment', 'gdpGrowth'].forEach(key => {
@@ -1327,12 +1451,16 @@ function renderEndScreen(result) {
         return a ? `<span class="achievement-badge" title="${a.desc}">🏆 ${a.name}</span>` : '';
       }).join('')}</div>`
     : '<p class="hint">لم تحقق أي إنجازات خاصة في هذه الفترة الرئاسية.</p>';
+  const challengesHtml = (s.activeChallenges || []).length
+    ? `<p>معدِّلات التحدي: ${s.activeChallenges.map(id => { const c = CHALLENGE_MODIFIERS.find(x => x.id === id); return c ? c.name : id; }).join('، ')}</p>`
+    : '';
   const sumWrap = document.getElementById('end-summary');
   sumWrap.innerHTML = `
     <p>المدة التي حكمت فيها: ${s.month - 1} شهراً</p>
     <p>عدد القرارات المتخذة: ${s.decisionsLog.length}</p>
     <p>عدد الأحداث التي واجهتها: ${s.eventsLog.length}</p>
     <p>الدرجة النهائية: ${computeFinalScore(s)} / 100</p>
+    ${challengesHtml}
     <h4 style="margin-top:14px">الإنجازات</h4>
     ${achievementsHtml}`;
   showScreen('screen-end');
@@ -1351,6 +1479,7 @@ function showModal(html, opts) {
   const closeBtn = dismissible ? '<button type="button" class="modal-close-x" id="modal-close-x" aria-label="إغلاق">✕</button>' : '';
   box.innerHTML = closeBtn + html;
   box.classList.toggle('crisis-modal', !!opts.crisis);
+  box.classList.toggle('celebrate-modal', !!opts.celebrate);
   const overlay = document.getElementById('modal-overlay');
   overlay.classList.add('active');
   if (dismissible) {

@@ -19,9 +19,11 @@
       </div>
       <h1>رئيس ليبيا</h1>
       <p class="subtitle">لعبة محاكاة استراتيجية سياسية واقتصادية</p>
+      <div id="legacy-summary" class="legacy-summary"></div>
       <div class="menu-buttons">
         <button id="btn-new-game" class="btn btn-primary">بدء لعبة جديدة</button>
         <button id="btn-continue" class="btn">استكمال اللعبة المحفوظة</button>
+        <button id="btn-hall-of-leaders" class="btn btn-ghost">🏛 سجل الحكام</button>
         <button id="btn-how-to-play" class="btn btn-ghost">كيف ألعب؟</button>
         <button id="btn-theme-toggle-start" class="btn btn-ghost theme-toggle">🌙 الوضع الليلي/النهاري</button>
         <button id="btn-sound-toggle-start" class="btn btn-ghost theme-toggle">🔊 الصوت</button>
@@ -49,6 +51,10 @@
     <input type="text" id="input-president-name" placeholder="اكتب اسم الرئيس" maxlength="30">
     <label class="field-label">الخلفية السياسية</label>
     <div id="background-list" class="card-grid small"></div>
+    <div id="challenge-section">
+      <label class="field-label">معدِّلات التحدي (اختيارية)</label>
+      <div id="challenge-list" class="challenge-list"></div>
+    </div>
     <div class="nav-row">
       <button class="btn btn-ghost" data-back="screen-scenario">رجوع</button>
       <button id="btn-start-intro" class="btn btn-primary">بدء الرئاسة</button>
@@ -130,6 +136,9 @@
           </div>
         </div>
       </div>
+
+      <!-- شائعات القصر: ترقّب لما يُحاك دون كشفه بالكامل -->
+      <div id="rumor-banner" class="rumor-banner" style="display:none"></div>
 
       <!-- شريط التنبيهات الحرجة -->
       <div id="attention-section">
@@ -283,6 +292,9 @@
   <div class="panel-wrap end-panel">
     <h2 id="end-title"></h2>
     <p id="end-reason"></p>
+    <div class="end-score-big"><span id="end-score-num">0</span><span class="end-score-max">/ 100</span></div>
+    <p id="end-epilogue" class="end-epilogue"></p>
+    <div id="end-legacy-compare" class="end-legacy-compare"></div>
     <div class="end-grid">
       <div class="end-col">
         <h3>المؤشرات النهائية</h3>
@@ -322,6 +334,7 @@
 <script src="js/systems/schemes.js"></script>
 <script src="js/systems/achievements.js"></script>
 <script src="js/systems/sound.js"></script>
+<script src="js/systems/legacy.js"></script>
 <script src="js/systems/gameover.js"></script>
 <script src="js/systems/dashboard.js"></script>
 <script src="js/charts.js"></script>

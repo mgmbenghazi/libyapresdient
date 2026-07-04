@@ -36,6 +36,7 @@ function playAchievement() { beep(523, 0.12, 'sine', 0.12); setTimeout(() => bee
 function playCrisisAlert() { beep(220, 0.25, 'sawtooth', 0.1); setTimeout(() => beep(196, 0.3, 'sawtooth', 0.1), 200); }
 function playGameOverGood() { beep(392, 0.18, 'sine', 0.12); setTimeout(() => beep(523, 0.18, 'sine', 0.12), 180); setTimeout(() => beep(659, 0.35, 'sine', 0.12), 360); }
 function playGameOverBad() { beep(220, 0.35, 'sawtooth', 0.12); setTimeout(() => beep(147, 0.5, 'sawtooth', 0.12), 280); }
+function playMilestone() { beep(523, 0.12, 'sine', 0.12); setTimeout(() => beep(659, 0.12, 'sine', 0.12), 110); setTimeout(() => beep(784, 0.12, 'sine', 0.12), 220); setTimeout(() => beep(1046, 0.28, 'sine', 0.12), 330); }
 
 function toggleMute() {
   Sound.muted = !Sound.muted;

@@ -50,6 +50,29 @@ function computeFinalScore(state) {
   return Math.round(score);
 }
 
+// نهاية سردية مخصصة لكل سبب سقوط تستشهد بآخر قرار/حدث فعلي دفع اللاعب لهذه النهاية -
+// بدل شاشة عامة موحدة، فيشعر اللاعب أن اختياراته الفعلية هي من كتبت نهايته لا نص جاهز مسبقاً
+function buildEpilogue(state, reason) {
+  const notableDecision = state.decisionsLog[state.decisionsLog.length - 1];
+  const notableEvent = state.eventsLog[state.eventsLog.length - 1];
+  const citeDecision = notableDecision ? `آخر قرار اتخذته كان "${notableDecision.title}" (اخترت: ${notableDecision.optionLabel}).` : '';
+  const citeEvent = notableEvent ? `آخر أزمة واجهتها كانت "${notableEvent.title}" (تعاملت معها بـ: ${notableEvent.optionLabel}).` : '';
+
+  if (reason === 'overthrow') {
+    return `انهار الرضا الشعبي عن حكمك حتى بلغ نقطة اللاعودة، وخرجت الحشود للمطالبة برحيلك. ${citeEvent} ${citeDecision} لم يكن كافياً لاحتواء الغضب المتراكم على مدى أشهر.`.trim();
+  }
+  if (reason === 'bankruptcy') {
+    return `استُنزفت الخزينة العامة والاحتياطي الأجنبي معاً حتى عجزت الدولة عن الوفاء بالتزاماتها الأساسية. ${citeDecision} جاء أمام أزمة كانت تتفاقم شهراً بعد شهر دون معالجة جذرية.`.trim();
+  }
+  if (reason === 'occupation') {
+    return `تدهور الوضع الأمني إلى درجة فقدت فيها الدولة سيطرتها على أجزاء من أراضيها، ودخلت قوى خارجية لملء الفراغ. ${citeEvent} كشف هشاشة أمنية لم تُعالَج في الوقت المناسب.`.trim();
+  }
+  const score = computeFinalScore(state);
+  if (score >= 80) return 'أكملت فترتك الرئاسية وأنت تترك خلفك دولة أكثر استقراراً وازدهاراً مما ورثتها - إرث يُحتذى به في تاريخ البلاد.';
+  if (score >= 50) return 'أكملت فترتك الرئاسية بأداء متوازن، رغم أزمات لم تُحسم جميعها بالشكل الأمثل خلال سنوات حكمك.';
+  return 'أكملت فترتك الرئاسية، لكنك تترك خلفك دولة تواجه تحديات جسيمة لم تفلح سياساتك في احتوائها بالكامل.';
+}
+
 function getTitle(state, reason) {
   const score = computeFinalScore(state);
   if (reason === 'overthrow') return 'الرئيس المخلوع';

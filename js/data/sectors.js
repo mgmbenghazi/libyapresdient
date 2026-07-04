@@ -94,7 +94,17 @@ const ACHIEVEMENTS = [
   { id: 'iron_fist_security', name: 'قبضة أمنية', desc: 'حققت مستوى أمن فوق 90%.', check: s => s.indicators.security > 90 },
   { id: 'poverty_eradicated', name: 'القضاء على الفقر', desc: 'خفضت مستوى الفقر إلى أقل من 5%.', check: s => s.indicators.poverty < 5 },
   { id: 'trade_surplus', name: 'فائض تجاري', desc: 'حققت ميزاناً تجارياً موجباً فوق 10%.', check: s => s.indicators.tradeBalance > 10 },
-  { id: 'survivor', name: 'الناجي', desc: 'أكملت فترة رئاسية كاملة رغم كل الأزمات.', check: s => s.month >= 48 }
+  { id: 'survivor', name: 'الناجي', desc: 'أكملت فترة رئاسية كاملة رغم كل الأزمات.', check: s => s.month >= 48 },
+
+  // ------- إنجازات أكثر تحديداً وقصصية - كل منها يستشهد بموقف فعلي لا عتبة مؤشر مجردة -------
+  { id: 'coup_survivor', name: 'الناجي من الانقلاب', desc: 'نجوت من محاولة انقلاب عسكري ضدك.',
+    check: s => s.eventsLog.some(e => ['coup_attempt', 'scheme_coup_executed', 'scheme_coup_discovered'].includes(e.eventId)) },
+  { id: 'scheme_uncoverer', name: 'كاشف المؤامرات', desc: 'كشفت مؤامرة سرية تُحاك ضدك قبل أن تكتمل.',
+    check: s => s.eventsLog.some(e => e.eventId === 'scheme_coup_discovered' || e.eventId === 'scheme_defection_discovered' || e.eventId === 'scheme_smear_discovered') },
+  { id: 'election_winner', name: 'المنتخَب شعبياً', desc: 'فزت باستحقاق انتخابي حقيقي أمام منافس حي بشعبية أعلى من شعبيته وقت الاقتراع.',
+    check: s => s.decisionsUsed.includes('election_call') && s.rival && s.indicators.satisfaction >= s.rival.approval },
+  { id: 'constitution_framer', name: 'واضع الدستور', desc: 'حسمت المسار الدستوري الكامل لدولتك: نظام الحكم واللامركزية وطابع الدولة.',
+    check: s => s.constitution.governmentType && s.constitution.decentralization && s.constitution.stateCharacter }
 ];
 
 function clampIndicator(key, value) {

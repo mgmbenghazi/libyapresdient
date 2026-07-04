@@ -16,9 +16,10 @@ const SAVE_KEY = 'rayyes_libya_save';
 //     مع خط أساس ثابت budget.baseline وإيراد مرجعي budget.referenceRevenue يُحسبان عند إنشاء اللعبة
 // 11: + رأس المال السياسي (politicalCapital) ولوحة الإجراءات الرئاسية الاستباقية (actionCooldowns, actionsLog)
 //     + المسار الدستوري اللارجعة (constitution) + المؤامرات (schemes) + منافس انتخابي حي (rival)
-const CURRENT_SAVE_VERSION = 11;
+// 12: + معدِّلات التحدي الاختيارية النشطة لهذه اللعبة (activeChallenges) - جزء من إرث الرئاسة الدائم
+const CURRENT_SAVE_VERSION = 12;
 
-function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices) {
+function createInitialState(scenarioId, presidentName, backgroundId, advisorChoices, challengeIds) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
   const background = POLITICAL_BACKGROUNDS.find(b => b.id === backgroundId);
   const indicators = { ...scenario.startIndicators };
@@ -80,6 +81,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     constitution: { governmentType: null, decentralization: null, stateCharacter: null }, // يُحدَّد بقرارات تأسيسية لا رجعة فيها أول اللعبة
     schemes: [], // {id, initiatorId, kind:'coup'|'defect'|'smear', progress, discovered, startedMonth} - مؤامرة واحدة نشطة كحد أقصى
     rival: null, // {characterId, name, approval} - يُهيَّأ لاحقاً بواسطة initRival عند تعريف MINISTRIES/CHARACTERS بالكامل
+    activeChallenges: [], // معرّفات معدِّلات التحدي المُفعَّلة لهذه اللعبة تحديداً (CHALLENGE_MODIFIERS في systems/legacy.js)
     decisionsUsed: [], // oneTime ids used
     decisionsLog: [],
     eventsLog: [],
@@ -90,6 +92,7 @@ function createInitialState(scenarioId, presidentName, backgroundId, advisorChoi
     pendingEvent: null
   };
   state.rival = initRival(state);
+  applyChallengeModifiers(state, challengeIds);
   return state;
 }
 
@@ -211,6 +214,11 @@ const SAVE_MIGRATIONS = {
     if (!s.rival) s.rival = initRival(s);
     s.version = 11;
     return s;
+  },
+  11: function migrateV11toV12(s) {
+    if (!Array.isArray(s.activeChallenges)) s.activeChallenges = [];
+    s.version = 12;
+    return s;
   }
 };
 
@@ -239,7 +247,7 @@ function validateStateShape(s) {
     ['scheduledEffects'], ['eventCooldowns'], ['relationsCooldowns'], ['decisionsLog'], ['eventsLog'], ['history'], ['achievements'],
     ['pendingFollowUps'], ['engineStreaks', 'austerity'], ['economy', 'worldCycle'],
     ['budget', 'baseline'], ['budget', 'referenceRevenue'],
-    ['politicalCapital'], ['actionCooldowns'], ['constitution'], ['schemes'], ['rival']
+    ['politicalCapital'], ['actionCooldowns'], ['constitution'], ['schemes'], ['rival'], ['activeChallenges']
   ];
   for (const path of requiredPaths) {
     let cur = s;

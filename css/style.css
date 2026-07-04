@@ -119,6 +119,22 @@ button {
 .subtitle { color: var(--text-dim); margin-bottom: 30px; }
 .menu-buttons { display: flex; flex-direction: column; gap: 12px; }
 
+/* ------- إرث الرئاسة ------- */
+.legacy-summary { display: flex; justify-content: center; gap: 22px; margin-bottom: 22px; }
+.legacy-hint { color: var(--text-faint); font-size: .82rem; margin-bottom: 22px; }
+.legacy-stat { display: flex; flex-direction: column; align-items: center; }
+.legacy-stat b { font-size: 1.4rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.legacy-stat span { font-size: .72rem; color: var(--text-dim); }
+.hall-summary { display: flex; justify-content: center; gap: 24px; background: var(--panel-2); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
+.hall-list { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.hall-row { display: grid; grid-template-columns: 2fr 1fr 1.4fr 0.8fr; gap: 8px; padding: 8px 12px; font-size: .82rem; background: var(--panel-2); border-radius: 6px; }
+.hall-row.hall-head { background: none; color: var(--text-faint); font-size: .72rem; font-weight: 700; }
+.hall-score { font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 700; }
+.end-epilogue { max-width: 640px; margin: 10px auto 0; color: var(--text-dim); line-height: 1.8; font-style: italic; }
+.end-legacy-compare { margin-top: 14px; }
+.legacy-compare-card { display: inline-block; background: var(--panel-2); border: 1px solid var(--hairline); border-radius: 20px; padding: 8px 20px; font-size: .85rem; color: var(--gold); }
+.legacy-compare-card.new-best { background: linear-gradient(135deg, rgba(201,162,39,.25), rgba(201,162,39,.1)); border-color: var(--gold); font-weight: 700; }
+
 /* ------- لوحات عامة ------- */
 .panel-wrap {
   max-width: 900px;
@@ -281,6 +297,10 @@ h3.section-title .st-note { font-size: .72rem; color: var(--text-faint); font-we
 .quicknav { display: flex; gap: 6px; font-size: .7rem; color: var(--text-faint); flex-wrap: wrap; justify-content: flex-end; }
 .quicknav span { padding: 4px 10px; border: 1px solid var(--hairline-soft); border-radius: 20px; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
 .quicknav span:hover { color: var(--gold); border-color: var(--gold); }
+
+/* ------- شائعات القصر ------- */
+.rumor-banner { display: flex; flex-direction: column; gap: 4px; background: rgba(201,162,39,.08); border: 1px dashed var(--hairline); border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; }
+.rumor-line { font-size: .78rem; color: var(--gold); font-style: italic; }
 
 /* ------- شريط التنبيهات ------- */
 .alert-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
@@ -552,6 +572,13 @@ canvas.spark { display: block; }
   0%, 100% { box-shadow: 0 0 0 4px rgba(229,72,77,.15), 0 20px 60px rgba(0,0,0,.6); }
   50% { box-shadow: 0 0 0 8px rgba(229,72,77,.3), 0 20px 60px rgba(0,0,0,.6); }
 }
+.modal-box.celebrate-modal { border: 2px solid var(--gold); animation: celebrateGlow 1.4s ease-out; }
+.modal-box.celebrate-modal h2 { color: var(--gold); }
+@keyframes celebrateGlow {
+  0% { box-shadow: 0 0 0 rgba(201,162,39,0), 0 20px 60px rgba(0,0,0,.6); }
+  30% { box-shadow: 0 0 45px rgba(201,162,39,.6), 0 20px 60px rgba(0,0,0,.6); }
+  100% { box-shadow: 0 0 0 rgba(201,162,39,0), 0 20px 60px rgba(0,0,0,.6); }
+}
 .busy-chip { background: rgba(224,167,43,.2); color: var(--medium); border: 1px solid rgba(224,167,43,.4); }
 .modal-box .modal-desc { color: var(--text-dim); line-height: 1.7; margin-bottom: 18px; }
 .modal-tag { display: inline-block; font-size: .75rem; padding: 3px 12px; border-radius: 20px; background: #2c3a2a; color: var(--text-dim); margin-bottom: 10px; }
@@ -586,9 +613,22 @@ canvas.spark { display: block; }
 /* ------- شاشة النهاية ------- */
 .achievements-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .achievement-badge { background: linear-gradient(135deg, var(--gold), #8a6a10); color: #201a05; font-weight: 700; font-size: .8rem; padding: 6px 14px; border-radius: 20px; }
+.achievement-badge.locked { background: var(--panel-2); color: var(--text-faint); opacity: .55; filter: grayscale(1); }
+
+/* ------- معدِّلات التحدي ------- */
+.challenge-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 10px 0 20px; }
+.challenge-chip { background: var(--panel); border: 1px solid var(--hairline-soft); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.challenge-chip:hover { border-color: var(--hairline); }
+.challenge-chip.selected { border-color: var(--gold); background: rgba(201,162,39,.1); }
+.challenge-chip.locked { cursor: default; opacity: .55; }
+.cc-head { font-weight: 700; margin-bottom: 4px; }
+.cc-desc { font-size: .78rem; color: var(--text-dim); margin: 0; }
 
 .end-panel { text-align: center; }
 .end-panel h2 { font-size: 2rem; color: var(--gold); }
+.end-score-big { font-variant-numeric: tabular-nums; margin: 6px 0; }
+.end-score-big #end-score-num { font-size: 3.2rem; font-weight: 900; color: var(--gold); }
+.end-score-big .end-score-max { font-size: 1.1rem; color: var(--text-faint); margin-inline-start: 6px; }
 .end-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; text-align: right; margin-top: 20px; }
 .end-col { background: var(--panel); border-radius: var(--radius); padding: 16px; }
 

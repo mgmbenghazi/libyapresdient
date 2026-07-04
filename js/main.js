@@ -1,3 +1,6 @@
+// أحداث نجاة وجودية كبرى - تجاوزها يستحق مكافأة سمعية صغيرة بدل استمرار صامت في اللعبة
+const MILESTONE_SURVIVAL_EVENT_IDS = ['coup_attempt', 'scheme_coup_executed', 'scheme_coup_discovered'];
+
 // المتحكم الرئيسي في اللعبة
 const Game = {
   state: null,
@@ -19,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindModalBackdropClose();
 
   document.getElementById('btn-continue').disabled = !hasSavedGame();
+  renderLegacySummary();
 });
 
 function bindModalBackdropClose() {
@@ -86,6 +90,7 @@ function bindBackButtons() {
 
 function bindStartScreen() {
   document.getElementById('btn-new-game').addEventListener('click', () => {
+    Game.selectedChallenges = [];
     showScreen('screen-scenario');
     renderScenarioList();
   });
@@ -101,6 +106,9 @@ function bindStartScreen() {
     Game.selectedTrendKeys = ['satisfaction'];
     showScreen('screen-game');
     renderGameScreen();
+  });
+  document.getElementById('btn-hall-of-leaders').addEventListener('click', () => {
+    renderHallOfLeadersModal();
   });
   document.getElementById('btn-how-to-play').addEventListener('click', () => {
     showModal(`
@@ -123,7 +131,7 @@ function bindCharacterScreen() {
     if (!Game.selectedScenario) { showScreen('screen-scenario'); return; }
     if (!Game.selectedBackground) Game.selectedBackground = POLITICAL_BACKGROUNDS[0].id;
 
-    Game.state = createInitialState(Game.selectedScenario, name, Game.selectedBackground, {});
+    Game.state = createInitialState(Game.selectedScenario, name, Game.selectedBackground, {}, Game.selectedChallenges || []);
     Game.state.history.push(snapshotIndicators(Game.state));
     Game.prevGovernanceScore = undefined;
     Game.mapLayer = 'loyalty';
@@ -285,6 +293,8 @@ function processQueue() {
   if (step.type === 'event') {
     renderEventModal(step.payload, (idx) => {
       applyEventOption(s, step.payload, idx);
+      // لحظة احتفالية صغيرة عند تجاوز أزمة وجودية كبرى - مكافأة سمعية للاعب على نجاته لا مجرد استمرار صامت
+      if (MILESTONE_SURVIVAL_EVENT_IDS.includes(step.payload.id)) playMilestone();
       processQueue();
     });
     return;
@@ -298,7 +308,8 @@ function processQueue() {
       s.gameOver = true;
       s.gameOverReason = result.reason;
       saveGame(s);
-      renderEndScreen(result);
+      const legacyComparison = recordCompletedGame(s, result);
+      renderEndScreen(result, legacyComparison);
       return;
     }
     saveGame(s);
