@@ -1,14 +1,14 @@
-// مجسمات الشخصيات: مصنع شخصيات low-poly إجرائي بالكامل (بلا أي ملفات نماذج خارجية) -
-// مظهر كل شخصية حتمي ثابت مشتق من معرّفها (بذرة hash)، فيبدو محمد الزناتي هو نفسه في كل مكان وكل جلسة.
-// الزي يعكس الدور فعلياً: زي عسكري لقادة الأمن والدفاع، زي تقليدي لوجهاء القبائل والمشايخ، بدلة رسمية للبقية.
+// مجسمات الشخصيات: مصنع شخصيات إجرائي بالكامل (بلا أي ملفات نماذج خارجية) بنِسَب بشرية حقيقية -
+// رأس بحجم واقعي (نحو سُبع الطول) وعنق وكتفان منحوتان وصدر متناقص نحو الخصر وأطراف بمفاصل
+// وأحذية وملامح وجه فعلية. مظهر كل شخصية حتمي ثابت مشتق من معرّفها (بذرة hash)، فيبدو الوزير
+// نفسه في كل مكان وكل جلسة. الزي يعكس الدور فعلياً: بذلة عسكرية بنياشين، زي تقليدي بعباءة، أو بدلة رسمية.
 // نظام الأفاتار يلتقط لقطة واحدة لكل شخصية عبر عارض مشترك خفي ويعيد استخدامها كصورة - لا عشرات سياقات WebGL.
 
 const Char3D = {
-  _cache: {}, // charKey -> dataURL
+  _cache: {},
   _renderer: null,
   supported: typeof THREE !== 'undefined',
 
-  // مولّد أرقام حتمي من بذرة نصية - نفس المعرّف يعطي دوماً نفس الملامح
   _rng(seedStr) {
     let h = 1779033703;
     for (let i = 0; i < seedStr.length; i++) {
@@ -22,12 +22,12 @@ const Char3D = {
     };
   },
 
-  SKIN_TONES: [0xf1c9a5, 0xe0ac7e, 0xc68e5e, 0xa9713f, 0x8d5a2b],
-  SUIT_COLORS: [0x2b3446, 0x3a3a3a, 0x27343a, 0x40323a, 0x1f2c26, 0x333d55],
-  TIE_COLORS: [0xa93226, 0x1a5276, 0x196f3d, 0x7d6608, 0x6c3483, 0xc9a227],
-  TRAD_COLORS: [0xd9cfc0, 0xc9bda8, 0xb9ad96, 0xe4ddd0],
+  SKIN_TONES: [0xf0c8a0, 0xdda87c, 0xc4895c, 0xa87045, 0x8a5a33],
+  SUIT_COLORS: [0x243044, 0x2e3238, 0x1f3038, 0x382c32, 0x1c2a24, 0x2c3550, 0x3d3a33],
+  TIE_COLORS: [0x9e2f26, 0x1a5276, 0x196f3d, 0x8a6d0b, 0x5f3470, 0xb08d1f, 0x7a1f2b],
+  ROBE_COLORS: [0xe6ddcb, 0xd8ccb4, 0xc9bda2, 0xefe8da],
+  HAIR_COLORS: [0x1a1410, 0x2b1d14, 0x4a3526, 0x6e6a63, 0x9c9890],
 
-  // هيئة الشخصية من بياناتها الفعلية: عسكري/تقليدي/مدني - لا اختياراً عشوائياً بحتاً
   _styleFor(char) {
     const role = (char.role || '') + (char.traits || []).join('');
     if (role.includes('لواء') || role.includes('دفاع') || role.includes('داخلية') || (char.traits || []).includes('military_strategist')) return 'military';
@@ -35,106 +35,193 @@ const Char3D = {
     return 'suit';
   },
 
-  // بناء مجسم شخصية كاملة - يُستخدم للأفاتارات الساكنة ولمشاهد القصر الحية معاً
+  _isFemale(name) { return /ة\s|ة$|أمينة|نجاة|هدى|فوزية|رانيا|ليلى|آمنة|سعاد|مريم|فاطمة/.test(name || ''); },
+
+  // يبني شخصية كاملة بارتفاع ~2.2 وحدة (القدم عند 0) - opts.seated يحذف الساقين، opts.lod يبسّط
+  // التفاصيل الدقيقة للمجسمات البعيدة (الجالسون حول الطاولة) فلا تُهدَر آلاف المضلعات بلا فائدة
   buildFigure(char, opts) {
+    const o = opts || {};
     const rnd = this._rng(char.id || char.name || 'x');
-    const style = (opts && opts.style) || this._styleFor(char);
+    const style = o.style || this._styleFor(char);
+    const detail = !o.lod;
+    const female = this._isFemale(char.name);
+
     const skin = this.SKIN_TONES[Math.floor(rnd() * this.SKIN_TONES.length)];
-    const suitColor = style === 'military' ? 0x4b5320
-      : style === 'traditional' ? this.TRAD_COLORS[Math.floor(rnd() * this.TRAD_COLORS.length)]
+    const hairCol = this.HAIR_COLORS[Math.floor(rnd() * this.HAIR_COLORS.length)];
+    const cloth = style === 'military' ? 0x4a5240
+      : style === 'traditional' ? this.ROBE_COLORS[Math.floor(rnd() * this.ROBE_COLORS.length)]
       : this.SUIT_COLORS[Math.floor(rnd() * this.SUIT_COLORS.length)];
+    const build = 0.92 + rnd() * 0.18; // تفاوت البنية بين نحيف وممتلئ
 
-    const group = new THREE.Group();
-    const mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.75 });
+    const g = new THREE.Group();
+    const M = (c, r, m) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.78 : r, metalness: m || 0 });
+    const skinMat = M(skin, 0.62);
+    const clothMat = M(cloth, style === 'traditional' ? 0.88 : 0.7);
+    const hairMat = M(hairCol, 0.85);
+    const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); g.add(mesh); return mesh; };
 
-    // الجذع (سترة) + قميص
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.95, 8), mat(suitColor));
-    torso.position.y = 1.15;
-    group.add(torso);
-    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 0.5, 6), mat(0xe8e6df));
-    shirt.position.set(0, 1.32, 0.19);
-    group.add(shirt);
-    if (style === 'suit') {
-      const tie = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.4, 4), mat(this.TIE_COLORS[Math.floor(rnd() * this.TIE_COLORS.length)]));
-      tie.rotation.x = Math.PI;
-      tie.position.set(0, 1.22, 0.26);
-      group.add(tie);
-    }
-    if (style === 'military') {
-      // نياشين على الصدر ورتب على الكتف - تفاصيل صغيرة تصنع "هيبة" الزي فعلياً
-      for (let i = 0; i < 3; i++) {
-        const medal = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.02), mat([0xc9a227, 0xa93226, 0x1a5276][i]));
-        medal.position.set(-0.14 + i * 0.09, 1.42, 0.32);
-        group.add(medal);
-      }
-      const epaulet = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.16), mat(0x3a411a));
-      epaulet.position.y = 1.62;
-      group.add(epaulet);
-    }
+    // ---- الجذع: صدر عريض يتناقص نحو الخصر ثم وركان - لا أسطوانة واحدة ----
+    const chest = add(new THREE.Mesh(new THREE.CylinderGeometry(0.205 * build, 0.178 * build, 0.44, 14), clothMat), 0, 1.53, 0);
+    chest.scale.z = 0.72; // مقطع بيضاوي لا دائري - الفرق بين جذع بشري وأنبوب
+    const waist = add(new THREE.Mesh(new THREE.CylinderGeometry(0.178 * build, 0.196 * build, 0.36, 14), clothMat), 0, 1.13, 0);
+    waist.scale.z = 0.74;
 
-    // الذراعان
-    [-1, 1].forEach(side => {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.8, 6), mat(suitColor));
-      arm.position.set(side * 0.44, 1.18, 0);
-      arm.rotation.z = side * 0.12;
-      group.add(arm);
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), mat(skin));
-      hand.position.set(side * 0.49, 0.76, 0);
-      group.add(hand);
+    // كتفان منحوتان: أسطوانة أفقية + كرتا دالية تعطيان خط كتف حقيقي
+    const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.40 * build, 12), clothMat);
+    shoulder.rotation.z = Math.PI / 2;
+    shoulder.scale.z = 0.8;
+    add(shoulder, 0, 1.73, 0);
+    [-1, 1].forEach(sd => {
+      const delt = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), clothMat);
+      delt.scale.set(1, 0.95, 0.82);
+      add(delt, sd * 0.20 * build, 1.73, 0);
     });
 
-    // الساقان (تُخفيان في وضع الجلوس بمشهد مجلس الوزراء)
-    if (!opts || !opts.seated) {
-      [-1, 1].forEach(side => {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 6), mat(style === 'traditional' ? suitColor : 0x22252c));
-        leg.position.set(side * 0.16, 0.35, 0);
-        group.add(leg);
+    // ---- العنق والرأس ----
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.072, 0.13, 10), skinMat), 0, 1.845, 0);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.155, 18, 16), skinMat);
+    head.scale.set(0.94, 1.13, 1.0);
+    add(head, 0, 2.00, 0);
+    // فك/ذقن يمنح الوجه بنية بدل كرة صمّاء
+    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), skinMat);
+    jaw.scale.set(0.94, 0.72, 0.95);
+    add(jaw, 0, 1.915, 0.018);
+
+    if (detail) {
+      // ملامح الوجه: عينان بحدقتين، حاجبان، أنف - الأفاتار لقطة قريبة فالملامح هي كل شيء
+      [-1, 1].forEach(sd => {
+        const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), M(0xf4f1ea, 0.35));
+        eyeW.scale.set(1, 0.78, 0.6);
+        add(eyeW, sd * 0.058, 2.015, 0.128);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8), M(0x2a1c12, 0.3)), sd * 0.060, 2.013, 0.147);
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.014, 0.02), hairMat);
+        brow.rotation.z = sd * 0.10;
+        add(brow, sd * 0.060, 2.062, 0.138);
+      });
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.072, 6), skinMat);
+      nose.rotation.x = Math.PI / 2.05;
+      add(nose, 0, 1.985, 0.145);
+      const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.011, 0.015), M(0x8a5348, 0.6));
+      add(mouth, 0, 1.925, 0.132);
+      // أذنان
+      [-1, 1].forEach(sd => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), skinMat);
+        ear.scale.set(0.45, 1, 0.7);
+        add(ear, sd * 0.145, 2.00, 0.01);
       });
     }
 
-    // الرأس والملامح
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 10), mat(skin));
-    head.position.y = 1.92;
-    group.add(head);
-    const isFemale = /ة\b|أمينة|نجاة|هدى|فوزية|رانيا|ليلى|آمنة/.test(char.name || '');
-    const hairColor = rnd() < 0.25 ? 0x777777 : 0x1d1712;
+    // ---- غطاء الرأس/الشعر حسب الزي ----
     if (style === 'military') {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.14, 10), mat(0x3a411a));
-      cap.position.y = 2.12;
-      group.add(cap);
-      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.18), mat(0x23290f));
-      visor.position.set(0, 2.05, 0.22);
-      group.add(visor);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.176, 0.085, 16), M(0x3b4232, 0.7)), 0, 2.135, 0);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.168, 0.022, 16), M(0x2c3126, 0.6)), 0, 2.088, 0);
+      const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.018, 16, 1, false, -0.9, 1.8), M(0x22271c, 0.45));
+      visor.scale.z = 1.35;
+      add(visor, 0, 2.078, 0.075);
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.035, 12), M(0xc9a227, 0.4, 0.6)), 0, 2.135, 0.172).rotation.y = 0;
     } else if (style === 'traditional') {
-      const shash = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.18, 10), mat(0xefeae0));
-      shash.position.y = 2.12;
-      group.add(shash);
-    } else if (isFemale) {
-      const hijab = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.72), mat(0x4a5568 + Math.floor(rnd() * 0x202020)));
-      hijab.position.y = 1.94;
-      group.add(hijab);
+      // عمامة/شاش ملفوف بطبقات
+      for (let i = 0; i < 3; i++) {
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.135 - i * 0.012, 0.042, 8, 18), M(0xefe9dc, 0.9));
+        wrap.rotation.x = Math.PI / 2;
+        wrap.rotation.z = i * 0.5;
+        add(wrap, 0, 2.10 + i * 0.045, 0);
+      }
+    } else if (female) {
+      const hijab = new THREE.Mesh(new THREE.SphereGeometry(0.182, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.78), M(0x3f4a5c + Math.floor(rnd() * 0x151515), 0.85));
+      hijab.scale.set(1, 1.08, 1.02);
+      add(hijab, 0, 2.00, -0.012);
+      const drape = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.24, 0.30, 14, 1, true), M(0x3f4a5c, 0.85));
+      drape.material.side = THREE.DoubleSide;
+      add(drape, 0, 1.80, -0.02);
     } else {
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), mat(hairColor));
-      hair.position.y = 1.97;
-      group.add(hair);
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.163, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+      hair.scale.set(1, 1.06, 1);
+      add(hair, 0, 2.005, -0.01);
+      if (rnd() < 0.3) { // انحسار الشعر عند الصدغين لبعض الشخصيات
+        hair.scale.set(0.96, 0.9, 0.96);
+        hair.position.z = -0.03;
+      }
     }
-    if (!isFemale && rnd() < 0.45 && style !== 'military') {
-      const beard = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.35), mat(hairColor));
-      beard.position.y = 1.86;
-      beard.position.z = 0.06;
-      group.add(beard);
+    if (!female && rnd() < 0.5) {
+      const beard = new THREE.Mesh(new THREE.SphereGeometry(0.132, 14, 12, 0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.44), hairMat);
+      beard.scale.set(0.98, 0.95, 1.0);
+      add(beard, 0, 1.945, 0.012);
     }
-    if (rnd() < 0.3) {
-      [-1, 1].forEach(side => {
-        const lens = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 12), mat(0x222222));
-        lens.position.set(side * 0.1, 1.94, 0.23);
-        group.add(lens);
+    if (detail && rnd() < 0.28) { // نظارات بإطار وعدستين
+      [-1, 1].forEach(sd => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.008, 6, 16), M(0x1e1e22, 0.4, 0.3));
+        add(rim, sd * 0.060, 2.015, 0.142);
+      });
+      add(new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.007, 0.007), M(0x1e1e22, 0.4, 0.3)), 0, 2.015, 0.145);
+    }
+
+    // ---- ملابس: طية سترة/قميص أو عباءة ----
+    if (style === 'suit' || style === 'military') {
+      const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.115, 0.34, 10), M(0xeceae2, 0.6));
+      shirt.scale.z = 0.55;
+      add(shirt, 0, 1.58, 0.115);
+      const collarL = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.16, 0.02), clothMat);
+      collarL.rotation.z = 0.30; add(collarL, -0.075, 1.66, 0.135);
+      const collarR = collarL.clone(); collarR.rotation.z = -0.30; add(collarR, 0.075, 1.66, 0.135);
+      if (style === 'suit') {
+        const tie = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.048, 0.30, 4), M(this.TIE_COLORS[Math.floor(rnd() * this.TIE_COLORS.length)], 0.55));
+        tie.scale.z = 0.4;
+        add(tie, 0, 1.53, 0.148);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.045, 0.035), tie.material), 0, 1.685, 0.145);
+      } else {
+        // نياشين ورتب كتف
+        for (let i = 0; i < 4; i++) {
+          const medal = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.05, 0.012), M([0xc9a227, 0x9e2f26, 0x1a5276, 0x196f3d][i], 0.45, 0.4));
+          add(medal, -0.115 + i * 0.052, 1.585, 0.152);
+        }
+        [-1, 1].forEach(sd => {
+          const ep = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.022, 0.085), M(0x2f3527, 0.6));
+          add(ep, sd * 0.185, 1.795, 0);
+          add(new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.026, 0.008), M(0xc9a227, 0.4, 0.55)), sd * 0.20, 1.808, 0.03);
+        });
+      }
+    } else {
+      // عباءة تنسدل من الكتفين إلى القدمين
+      const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.40, 1.35, 16, 1, true), clothMat);
+      robe.material.side = THREE.DoubleSide;
+      add(robe, 0, 1.02, 0);
+      const trim = new THREE.Mesh(new THREE.TorusGeometry(0.185, 0.014, 6, 20), M(0xc9a227, 0.5, 0.35));
+      trim.rotation.x = Math.PI / 2;
+      add(trim, 0, 1.70, 0.02);
+    }
+
+    // ---- الذراعان بمفصل مرفق حقيقي ----
+    [-1, 1].forEach(sd => {
+      const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.056, 0.36, 10), clothMat);
+      upper.rotation.z = sd * 0.10;
+      add(upper, sd * 0.235 * build, 1.53, 0);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.056, 8, 8), clothMat), sd * 0.253 * build, 1.35, 0);
+      const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.054, 0.046, 0.34, 10), clothMat);
+      fore.rotation.z = sd * (o.seated ? 0.55 : 0.06);
+      fore.rotation.x = o.seated ? -0.85 : 0; // الجالس يضع ساعديه على الطاولة
+      add(fore, sd * (o.seated ? 0.30 : 0.265) * build, o.seated ? 1.22 : 1.17, o.seated ? 0.14 : 0);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), skinMat);
+      hand.scale.set(0.85, 1, 0.65);
+      add(hand, sd * (o.seated ? 0.33 : 0.272) * build, o.seated ? 1.10 : 0.99, o.seated ? 0.30 : 0);
+    });
+
+    // ---- الساقان والحذاء ----
+    if (!o.seated) {
+      [-1, 1].forEach(sd => {
+        const trouserMat = style === 'traditional' ? clothMat : M(0x1e222a, 0.75);
+        add(new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.072, 0.50, 10), trouserMat), sd * 0.093, 0.72, 0);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 8), trouserMat), sd * 0.093, 0.47, 0);
+        add(new THREE.Mesh(new THREE.CylinderGeometry(0.070, 0.058, 0.44, 10), trouserMat), sd * 0.093, 0.24, 0);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.062, 0.215), M(0x141416, 0.42, 0.15));
+        add(shoe, sd * 0.093, 0.031, 0.038);
       });
     }
-    return group;
+
+    g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+    return g;
   },
 
-  // لقطة أفاتار (رأس وكتفان) تُحفظ كصورة وتُعاد من الذاكرة المؤقتة في كل استخدام لاحق
   avatarDataURL(char) {
     if (!this.supported) return null;
     const key = char.id || char.name;
@@ -142,17 +229,27 @@ const Char3D = {
     try {
       if (!this._renderer) {
         const canvas = document.createElement('canvas');
-        canvas.width = 144; canvas.height = 168;
+        canvas.width = 168; canvas.height = 196;
         this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
-        this._renderer.setSize(144, 168, false);
+        this._renderer.setSize(168, 196, false);
+        this._renderer.outputEncoding = THREE.sRGBEncoding;
+        this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this._renderer.toneMappingExposure = 1.0;
         this._scene = new THREE.Scene();
-        this._camera = new THREE.PerspectiveCamera(34, 144 / 168, 0.1, 20);
-        this._camera.position.set(0.35, 2.05, 1.7);
-        this._camera.lookAt(0, 1.78, 0);
-        this._scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-        const key1 = new THREE.DirectionalLight(0xfff3d6, 0.9);
-        key1.position.set(2, 3, 2);
+        // تأطير رأس وكتفين عن قرب - النِسَب الجديدة تتطلب كاميرا أقرب بكثير من السابق
+        this._camera = new THREE.PerspectiveCamera(34, 168 / 196, 0.05, 20);
+        this._camera.position.set(0.30, 2.05, 1.02);
+        this._camera.lookAt(0, 1.94, 0);
+        this._scene.add(new THREE.HemisphereLight(0xcfe2f5, 0x4a4238, 0.5));
+        const key1 = new THREE.DirectionalLight(0xfff2dc, 1.05);
+        key1.position.set(1.6, 2.6, 2.2);
         this._scene.add(key1);
+        const fill = new THREE.DirectionalLight(0x9dc0e0, 0.42);
+        fill.position.set(-1.8, 1.2, 1.0);
+        this._scene.add(fill);
+        const rim = new THREE.DirectionalLight(0xffe9c4, 0.5);
+        rim.position.set(-0.6, 2.2, -1.8);
+        this._scene.add(rim);
       }
       const figure = this.buildFigure(char, {});
       this._scene.add(figure);
@@ -162,12 +259,11 @@ const Char3D = {
       this._cache[key] = url;
       return url;
     } catch (e) {
-      this.supported = false; // فشل WebGL - تتراجع كل الأفاتارات بهدوء للحروف الأولى القديمة
+      this.supported = false;
       return null;
     }
   },
 
-  // وسم صورة أفاتار جاهز للإدراج، أو null ليستخدم المستدعي بديله النصي القديم
   avatarImg(char, cls) {
     const url = this.avatarDataURL(char);
     return url ? `<img class="${cls || 'avatar3d'}" src="${url}" alt="">` : null;
