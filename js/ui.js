@@ -134,6 +134,8 @@ function renderIntro() {
   document.getElementById('intro-title').textContent = `تهانينا يا سيادة الرئيس ${Game.state.presidentName}`;
   document.getElementById('intro-text').textContent =
     `توليت اليوم رئاسة ليبيا في ظل سيناريو "${sc.name}".\n${sc.description}\n${sc.startTreasuryNote}\n\nأمامك أربع سنوات (48 شهراً) لإدارة شؤون البلاد، موازناً بين الاقتصاد والأمن ورضا الشعب والعلاقات الدولية.\nستُعرض عليك تقارير شهرية وقرارات وأحداث عليك التعامل معها بحكمة. حظاً موفقاً.`;
+  // مشهد التنصيب المجسم: القصر والعلم المرفرف والرئيس على المنصة بمظهره الفعلي المشتق من خلفيته
+  Palace3D.mountIntro('intro-palace-3d', Game.state.presidentName, Game.state.backgroundId);
 }
 
 function renderHUD() {
@@ -395,9 +397,69 @@ function regionAverageLoyalty(state, regionId) {
   return values.length ? values.reduce((a, v) => a + v, 0) / values.length : 50;
 }
 
+function map3dModeOn() {
+  return Map3D.supported && localStorage.getItem('rayyes_libya_map3d') !== '0';
+}
+
+function applyMapMode() {
+  const on = map3dModeOn();
+  const wrap2d = document.getElementById('map-2d-wrap');
+  const wrap3d = document.getElementById('map-3d-wrap');
+  const toggle = document.getElementById('map-mode-toggle');
+  if (!wrap2d || !wrap3d) return;
+  wrap2d.style.display = on ? 'none' : '';
+  wrap3d.style.display = on ? '' : 'none';
+  if (toggle) { toggle.textContent = on ? '🗺️ 2D' : '🧊 3D'; toggle.classList.toggle('active', on); }
+  Map3D.setVisible(on && Game.state && document.getElementById('screen-game').classList.contains('active'));
+  if (on && Map3D.supported === false) { // فشل WebGL فعلياً عند أول تهيئة - نتراجع بهدوء للمسطحة
+    localStorage.setItem('rayyes_libya_map3d', '0');
+    applyMapMode();
+  }
+}
+
+// إمالة ثلاثية تتبع المؤشر على البطاقات - مفوَّضة على مستوى المستند فتصمد أمام كل عمليات إعادة الرسم،
+// وتحترم تفضيل تقليل الحركة تلقائياً (القاعدة في CSS تُبطل التحويل نهائياً في هذه الحالة)
+const TILT_SELECTOR = '.domain-panel, .action-card, .decision-option, .rival-card';
+function bindCardTilt() {
+  document.addEventListener('pointermove', e => {
+    const card = e.target.closest && e.target.closest(TILT_SELECTOR);
+    document.querySelectorAll('.tilt-3d.tilting').forEach(el => {
+      if (el !== card) { el.classList.remove('tilting'); el.style.setProperty('--tiltX', '0deg'); el.style.setProperty('--tiltY', '0deg'); }
+    });
+    if (!card || e.pointerType === 'touch') return;
+    card.classList.add('tilt-3d', 'tilting');
+    const rect = card.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    card.style.setProperty('--tiltX', (-py * 6).toFixed(2) + 'deg');
+    card.style.setProperty('--tiltY', (px * 8).toFixed(2) + 'deg');
+  });
+  document.addEventListener('pointerleave', () => {
+    document.querySelectorAll('.tilt-3d.tilting').forEach(el => {
+      el.classList.remove('tilting');
+      el.style.setProperty('--tiltX', '0deg');
+      el.style.setProperty('--tiltY', '0deg');
+    });
+  }, true);
+}
+
+function bindMapModeToggle() {
+  const toggle = document.getElementById('map-mode-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', () => {
+    localStorage.setItem('rayyes_libya_map3d', map3dModeOn() ? '0' : '1');
+    applyMapMode();
+    renderLibyaMap();
+  });
+}
+
 function renderLibyaMap() {
   const s = Game.state;
   const layer = Game.mapLayer || 'loyalty';
+  applyMapMode();
+  if (map3dModeOn()) {
+    Map3D.update(s, layer);
+  }
   REGIONS.forEach(r => {
     const el = document.getElementById('map-' + r.id);
     if (!el) return;
@@ -1122,9 +1184,11 @@ function renderRivalPanel() {
   const approval = s.rival.approval;
   const yourApproval = s.indicators.satisfaction;
   const status = approval > yourApproval ? 'bad' : approval > yourApproval - 15 ? 'medium' : 'good';
+  const rivalChar = getCharacter(s, s.rival.characterId);
+  const rivalAvatar = rivalChar ? (Char3D.avatarImg(rivalChar, 'rival-avatar avatar3d') || '') : '';
   wrap.innerHTML = `
     <div class="rival-card">
-      <div class="rival-head"><span class="rival-name">${s.rival.name}</span><span class="rival-tag">المعارضة</span></div>
+      <div class="rival-head">${rivalAvatar}<span class="rival-name">${s.rival.name}</span><span class="rival-tag">المعارضة</span></div>
       <div class="rival-bars">
         <div class="rival-bar-row"><span>شعبيتك</span><div class="stat-bar"><div class="stat-bar-fill" style="width:${yourApproval}%"></div></div><b>${Math.round(yourApproval)}%</b></div>
         <div class="rival-bar-row"><span>شعبية المنافس</span><div class="stat-bar"><div class="stat-bar-fill ${status}" style="width:${approval}%"></div></div><b>${Math.round(approval)}%</b></div>
@@ -1311,6 +1375,12 @@ function renderElectionResultModal(result, onClose) {
     <div class="nav-row"><button class="btn btn-primary" id="modal-continue">متابعة</button></div>`;
   const dismiss = () => { hideModal(); onClose(); };
   const cleanWin = result.won && !result.caught;
+  // فوز نظيف يستحق مشهداً احتفالياً فوق العاصمة قبل نافذة النتيجة
+  if (cleanWin && !result._cinematicPlayed && typeof Map3D !== 'undefined') {
+    result._cinematicPlayed = true;
+    Map3D.playCinematic('election', () => renderElectionResultModal(result, onClose));
+    return;
+  }
   if (cleanWin) playMilestone();
   showModal(html, { crisis: !cleanWin, celebrate: cleanWin, onDismiss: dismiss });
   document.getElementById('modal-continue').addEventListener('click', dismiss);
@@ -1318,6 +1388,12 @@ function renderElectionResultModal(result, onClose) {
 
 // نتيجة اللحظة التاريخية: محاولة إعادة توحيد ليبيا فعلياً بعد اكتمال مسار الانتخابات الموحدة
 function renderUnifyResultModal(result, onClose) {
+  // أعظم لحظة في اللعبة تستحق مشهداً سينمائياً كاملاً قبل نافذة النتيجة - دورة كاملة فوق البلاد الموحدة
+  if (result.success && !result._cinematicPlayed && typeof Map3D !== 'undefined') {
+    result._cinematicPlayed = true;
+    Map3D.playCinematic('unify', () => renderUnifyResultModal(result, onClose));
+    return;
+  }
   const tag = result.success ? 'إعادة توحيد ليبيا' : 'انهيار مسار التوحيد';
   const body = result.success
     ? `تفوّقت سيطرتك الفعلية على الأرض (${result.territoryControl}%) على قوة السلطة الموازية (${result.rivalMilitaryStrength}%) - لأول مرة منذ أكثر من عقد من الانقسام، تتوحد مؤسسات الدولة السيادية تحت سلطة واحدة.`
@@ -1336,6 +1412,12 @@ function renderUnifyResultModal(result, onClose) {
 function renderCabinetGrid() {
   const wrap = document.getElementById('cabinet-grid');
   if (!wrap) return;
+  // قاعة المجلس المجسمة تُعاد بناؤها فقط عند تغيّر التشكيلة الفعلي - لا مع كل إعادة رسم للواجهة
+  const cabinetSig = JSON.stringify(Game.state.cabinet);
+  if (Game._cabinet3dSig !== cabinetSig) {
+    Game._cabinet3dSig = cabinetSig;
+    Palace3D.mountCabinet('cabinet-room-3d', Game.state);
+  }
   wrap.innerHTML = '';
   MINISTRIES.forEach(m => {
     const charId = Game.state.cabinet[m.id];
@@ -1376,7 +1458,7 @@ function renderCharacterGrid() {
     const busy = isCharacterBusy(Game.state, ch.id);
     const card = document.createElement('div');
     card.className = 'option-card char-card';
-    card.innerHTML = `<div class="char-avatar">${initials(ch.name)}</div>
+    card.innerHTML = `${Char3D.avatarImg(ch, 'char-avatar avatar3d') || `<div class="char-avatar">${initials(ch.name)}</div>`}
       <h3>${ch.name}</h3>
       <div class="char-role">${ch.role}</div>
       ${busy ? `<span class="trait-chip busy-chip">🕓 في مهمة</span>` : ''}
@@ -1407,7 +1489,7 @@ function characterModalHtml(ch) {
   return `
     <span class="modal-tag">${CHARACTER_CATEGORIES.find(c => c.id === ch.category) ? CHARACTER_CATEGORIES.find(c => c.id === ch.category).name : ''}</span>
     <div class="char-modal-header">
-      <div class="char-avatar-lg">${initials(ch.name)}</div>
+      ${Char3D.avatarImg(ch, 'char-avatar-lg avatar3d') || `<div class="char-avatar-lg">${initials(ch.name)}</div>`}
       <div><h2 style="margin:0">${ch.name}</h2><div class="char-role">${ch.role}</div></div>
     </div>
     <p class="modal-desc">${ch.bio}</p>
@@ -1691,9 +1773,12 @@ function advisorDialogueHtml(state, decision, option) {
   if (!option.advisor) return '';
   const resolved = resolveAdvisorText(state, decision, option);
   const { speaker, line } = splitAdvisorText(resolved);
+  // مجسم المتحدث الفعلي إن كان شخصية معروفة في اللعبة، وإلا أفاتار حتمي مشتق من اسم المنصب نفسه
+  const known = state.characters.find(c => speaker.includes(c.name) || c.role === speaker);
+  const avatar3d = Char3D.avatarImg(known || { id: 'advisor_' + speaker, name: speaker, role: speaker, category: 'government' }, 'advisor-avatar avatar3d');
   return `
     <div class="advisor-dialogue">
-      <span class="advisor-avatar">${speaker.trim()[0] || '💬'}</span>
+      ${avatar3d || `<span class="advisor-avatar">${speaker.trim()[0] || '💬'}</span>`}
       <div class="advisor-bubble"><b>${speaker}</b><p>${line}</p></div>
     </div>`;
 }

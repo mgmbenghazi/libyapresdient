@@ -65,6 +65,7 @@
 <!-- شاشة المقدمة -->
 <section id="screen-intro" class="screen">
   <div class="panel-wrap intro-panel">
+    <div class="palace3d-wrap"><canvas id="intro-palace-3d"></canvas></div>
     <h2 id="intro-title"></h2>
     <p id="intro-text" class="intro-text"></p>
     <div class="nav-row">
@@ -163,8 +164,9 @@
           <h3 class="section-title" style="margin-bottom:8px">🗺️ الخريطة التفاعلية</h3>
           <div class="layer-toggle" id="map-layer-toggle">
             <span data-layer="loyalty" class="active">الولاء</span><span data-layer="security">الأمن</span><span data-layer="development">التنمية</span><span data-layer="sovereignty">السيادة</span>
+            <span id="map-mode-toggle" class="map-mode-toggle" title="التبديل بين الخريطة المجسمة والمسطحة">🧊 3D</span>
           </div>
-          <div class="map-svg-wrap">
+          <div class="map-svg-wrap" id="map-2d-wrap">
             <svg id="libya-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
               <path id="map-west" class="map-region" data-region="west" d="M20,40 L190,30 L200,170 L120,270 L30,220 Z"></path>
               <path id="map-east" class="map-region" data-region="east" d="M200,30 L380,50 L370,210 L260,260 L200,170 Z"></path>
@@ -173,6 +175,10 @@
               <text x="290" y="140" class="map-label">الشرق</text>
               <text x="150" y="255" class="map-label">الجنوب</text>
             </svg>
+          </div>
+          <div class="map3d-wrap" id="map-3d-wrap" style="display:none">
+            <canvas id="libya-map-3d"></canvas>
+            <div class="map3d-hint">اسحب للتدوير · عجلة الفأرة للتقريب · انقر إقليماً للتفاصيل</div>
           </div>
           <div class="region-pulse-list" id="region-pulse-list"></div>
         </div>
@@ -254,6 +260,7 @@
 
       <h3 style="margin-top:24px">مجلس الوزراء</h3>
       <p class="hint">عيّن شخصيات في المناصب الوزارية. تؤثر كفاءة الوزير وفساده مباشرة على أداء قطاعه، والمنصب الشاغر يضر بمؤشره تدريجياً.</p>
+      <div class="palace3d-wrap cabinet3d-wrap"><canvas id="cabinet-room-3d"></canvas><div class="map3d-hint">قاعة المجلس: يجلس فيها وزراؤك المعيَّنون فعلياً - المقاعد الخالية شواغر حقيقية</div></div>
       <div id="cabinet-grid" class="cabinet-grid"></div>
 
       <h3 style="margin-top:28px">الشخصيات المؤثرة</h3>
@@ -329,6 +336,7 @@
   <div id="modal-box" class="modal-box"></div>
 </div>
 
+<script src="assets/vendor/three.min.js"></script>
 <script src="js/data/scenarios.js"></script>
 <script src="js/data/sectors.js"></script>
 <script src="js/data/decisions.js"></script>
@@ -351,6 +359,9 @@
 <script src="js/systems/gameover.js"></script>
 <script src="js/systems/dashboard.js"></script>
 <script src="js/charts.js"></script>
+<script src="js/char3d.js"></script>
+<script src="js/palace3d.js"></script>
+<script src="js/map3d.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

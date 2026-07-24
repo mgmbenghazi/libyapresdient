@@ -157,6 +157,7 @@ function bindCharacterScreen() {
     showScreen('screen-intro');
   });
   document.getElementById('btn-begin-rule').addEventListener('click', () => {
+    Palace3D.unmount('intro'); // إيقاف حلقة رسم مشهد التنصيب - لا استهلاك خلفي بعد مغادرة الشاشة
     showScreen('screen-game');
     renderGameScreen();
   });
@@ -191,6 +192,8 @@ function bindGameScreen() {
   });
 
   bindMapLayerToggle();
+  bindMapModeToggle();
+  bindCardTilt();
   bindDashboardQuickNav();
   bindEconomySubTabs();
 }
@@ -311,6 +314,13 @@ function processQueue() {
   }
 
   if (step.type === 'event') {
+    // لحظة سينمائية قبل أخطر حدث في اللعبة: انقضاض كاميرا على العاصمة قبل عرض نافذة محاولة الانقلاب
+    if (step.payload.id === 'coup_attempt' && !step._cinematicPlayed && typeof Map3D !== 'undefined') {
+      step._cinematicPlayed = true;
+      Game.queue.unshift(step);
+      Map3D.playCinematic('coup', () => processQueue());
+      return;
+    }
     renderEventModal(step.payload, (idx) => {
       applyEventOption(s, step.payload, idx);
       // لحظة احتفالية صغيرة عند تجاوز أزمة وجودية كبرى - مكافأة سمعية للاعب على نجاته لا مجرد استمرار صامت
