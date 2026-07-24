@@ -9,14 +9,30 @@ const Palace3D = {
 
   _mkScene(canvas, width, height) {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(width, height, false);
+    // نفس معالجة الصورة السينمائية المستخدمة في الخريطة المجسمة - كي تبدو كل مشاهد اللعبة من عالم واحد
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xfff3d6, 0.9);
-    sun.position.set(5, 9, 6);
+    scene.add(new THREE.HemisphereLight(0xc8dcf0, 0x4a4436, 0.35));
+    const sun = new THREE.DirectionalLight(0xfff3d6, 0.85);
+    sun.position.set(5, 11, 7);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    const sc = sun.shadow.camera;
+    sc.left = -9; sc.right = 9; sc.top = 9; sc.bottom = -9; sc.near = 1; sc.far = 32;
+    sun.shadow.bias = -0.0014;
     scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x9ab4d0, 0.28);
+    fill.position.set(-6, 4, -5);
+    scene.add(fill);
     return { renderer, scene, camera };
   },
 
@@ -69,16 +85,19 @@ const Palace3D = {
     // أرضية الساحة
     const plaza = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x3d3a33, roughness: 0.95 }));
     plaza.position.y = -0.15;
+    plaza.receiveShadow = true;
     scene.add(plaza);
 
     // واجهة القصر: جسم + صف أعمدة + إفريز
     const palaceMat = new THREE.MeshStandardMaterial({ color: 0xcfc5ae, roughness: 0.85 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2.6, 1.4), palaceMat);
     body.position.set(0, 1.3, -3.2);
+    body.castShadow = true; body.receiveShadow = true;
     scene.add(body);
     for (let i = 0; i < 6; i++) {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 2.2, 10), palaceMat);
       col.position.set(-3 + i * 1.2, 1.1, -2.35);
+      col.castShadow = true;
       scene.add(col);
     }
     const cornice = new THREE.Mesh(new THREE.BoxGeometry(8, 0.35, 1.8), new THREE.MeshStandardMaterial({ color: 0xbfb49a, roughness: 0.85 }));
@@ -106,6 +125,7 @@ const Palace3D = {
     );
     president.position.set(0, 0.28, 0.15);
     president.scale.setScalar(0.85);
+    president.traverse(o => { if (o.isMesh) o.castShadow = true; });
     scene.add(president);
 
     camera.position.set(0, 2.1, 6.4);
@@ -134,9 +154,11 @@ const Palace3D = {
 
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 0.2, 28), new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.9 }));
     floor.position.y = -0.1;
+    floor.receiveShadow = true;
     scene.add(floor);
     const table = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.16, 24), new THREE.MeshStandardMaterial({ color: 0x6b4f2f, roughness: 0.55 }));
     table.position.y = 0.85;
+    table.castShadow = true; table.receiveShadow = true;
     scene.add(table);
     const tableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 0.85, 10), new THREE.MeshStandardMaterial({ color: 0x543d2a, roughness: 0.7 }));
     tableLeg.position.y = 0.42;
@@ -161,6 +183,7 @@ const Palace3D = {
         fig.position.set(x, 0.35, z);
         fig.scale.setScalar(0.62);
         fig.lookAt(0, 0.35, 0);
+        fig.traverse(o => { if (o.isMesh) o.castShadow = true; });
         scene.add(fig);
       }
     });
@@ -180,8 +203,14 @@ const Palace3D = {
   _startLoop(id) {
     const ctx = this.scenes[id];
     if (!ctx || ctx.raf) return;
+    ctx.last = 0;
     const loop = t => {
       ctx.raf = requestAnimationFrame(loop);
+      if (t - ctx.last < 33) return; // سقف ~30 إطاراً/ثانية
+      // لا نرسم مشهداً مخفياً: قاعة المجلس تبقى مركّبة حتى وأنت في تبويب آخر، وكان رسمها
+      // المتواصل يلتهم المعالجة بلا أي فائدة ويُبطئ اللعبة كلها
+      if (ctx.renderer.domElement.offsetParent === null) return;
+      ctx.last = t;
       if (ctx.tick) ctx.tick(t);
       ctx.renderer.render(ctx.scene, ctx.camera);
     };
